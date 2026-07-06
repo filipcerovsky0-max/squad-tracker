@@ -3,8 +3,7 @@
   "provider": "python",
   "steps": {
     "install": {
-      "commands": ["pip install -r backend/requirements.txt"]
-    }
+"commands": ["pip install -r requirements.txt"]    }
   },
   "deploy": {
     "startCommand": "python backend/server.py"
