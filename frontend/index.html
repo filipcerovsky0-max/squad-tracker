@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Squad Tracker</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+
+  :root{
+    --ink:#0a0d0c;
+    --panel:#101614;
+    --panel-2:#151d1a;
+    --line:#22322b;
+    --signal:#ffb454;
+    --signal-dim:#8a6a3a;
+    --cyan:#4cc9f0;
+    --danger:#ff5d5d;
+    --text:#e7ede9;
+    --text-dim:#7c8f89;
+    --mono:'IBM Plex Mono', ui-monospace, monospace;
+    --sans:'Inter', system-ui, sans-serif;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%; margin:0; overscroll-behavior:none;}
+  body{
+    background:var(--ink); color:var(--text); font-family:var(--sans);
+    display:flex; flex-direction:column;
+  }
+  #app{position:fixed; inset:0; display:flex; flex-direction:column;}
+
+  /* ---------- JOIN SCREEN ---------- */
+  #join-screen{
+    flex:1; display:flex; align-items:center; justify-content:center;
+    position:relative; overflow:hidden; padding:24px;
+  }
+  .radar-wrap{
+    position:absolute; top:50%; left:50%; width:min(140vw,900px); height:min(140vw,900px);
+    transform:translate(-50%,-50%);
+    border-radius:50%;
+    background:
+      repeating-radial-gradient(circle, transparent 0, transparent 68px, rgba(255,180,84,0.06) 69px, transparent 70px),
+      radial-gradient(circle, rgba(255,180,84,0.05), transparent 60%);
+    border:1px solid var(--line);
+  }
+  .radar-sweep{
+    position:absolute; inset:0; border-radius:50%; overflow:hidden;
+    animation:spin 5s linear infinite;
+  }
+  .radar-sweep::before{
+    content:''; position:absolute; inset:0;
+    background:conic-gradient(from 0deg, rgba(255,180,84,0.35), transparent 35%);
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce){ .radar-sweep{ animation:none; } }
+
+  .join-card{
+    position:relative; z-index:2; width:100%; max-width:340px;
+    background:rgba(16,22,20,0.9); border:1px solid var(--line); border-radius:4px;
+    padding:28px 24px; backdrop-filter:blur(6px);
+  }
+  .eyebrow{
+    font-family:var(--mono); font-size:11px; letter-spacing:.18em; color:var(--signal);
+    text-transform:uppercase; margin:0 0 6px;
+  }
+  h1{ font-family:var(--mono); font-size:22px; font-weight:600; margin:0 0 20px; color:var(--text);}
+  label{ display:block; font-family:var(--mono); font-size:11px; color:var(--text-dim); letter-spacing:.08em; margin:14px 0 6px; text-transform:uppercase;}
+  input{
+    width:100%; background:var(--panel-2); border:1px solid var(--line); color:var(--text);
+    font-family:var(--mono); font-size:15px; padding:11px 12px; border-radius:3px; outline:none;
+  }
+  input:focus{ border-color:var(--signal); }
+  button{
+    width:100%; margin-top:22px; background:var(--signal); color:#1a1204; border:none;
+    font-family:var(--mono); font-weight:700; font-size:14px; letter-spacing:.06em;
+    padding:13px; border-radius:3px; cursor:pointer; text-transform:uppercase;
+  }
+  button:active{ transform:scale(0.98); }
+  button:disabled{ background:var(--signal-dim); color:#3a2f18; }
+  #join-error{ color:var(--danger); font-family:var(--mono); font-size:12px; margin-top:12px; min-height:14px;}
+
+  /* ---------- MAP SCREEN ---------- */
+  #map-screen{ flex:1; display:none; flex-direction:column; position:relative;}
+  #map{ flex:1; background:#0a0d0c; }
+  .leaflet-container{ background:#0a0d0c; }
+
+  #topbar{
+    position:absolute; top:0; left:0; right:0; z-index:1000;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 14px; background:linear-gradient(to bottom, rgba(10,13,12,0.92), transparent);
+    font-family:var(--mono); font-size:12px;
+  }
+  .room-tag{ color:var(--text-dim); }
+  .room-tag b{ color:var(--signal); letter-spacing:.05em; }
+  #status-dot{ display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--signal); margin-right:6px; }
+  #status-dot.offline{ background:var(--danger); }
+  #status-dot.pulse{ animation:pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+
+  #hud-bottom{
+    position:absolute; left:0; right:0; bottom:0; z-index:1000;
+    background:linear-gradient(to top, rgba(10,13,12,0.95), transparent);
+    padding:16px 12px 14px; display:flex; gap:8px; overflow-x:auto;
+  }
+  .chip{
+    flex:0 0 auto; background:rgba(16,22,20,0.9); border:1px solid var(--line); border-radius:3px;
+    padding:8px 12px; font-family:var(--mono); font-size:11px; min-width:96px;
+  }
+  .chip .name{ color:var(--text); font-weight:600; display:block; margin-bottom:2px;}
+  .chip .dist{ color:var(--cyan); }
+  .chip.self .name{ color:var(--signal); }
+
+  #alert-toast{
+    position:absolute; top:52px; left:50%; transform:translateX(-50%) translateY(-20px);
+    background:var(--danger); color:#2b0a0a; font-family:var(--mono); font-weight:700;
+    font-size:12px; padding:8px 14px; border-radius:3px; z-index:1100; opacity:0;
+    transition:transform .25s ease, opacity .25s ease; pointer-events:none; white-space:nowrap;
+  }
+  #alert-toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .squad-marker{ position:relative; width:16px; height:16px; }
+  .squad-marker .dot{ width:12px; height:12px; border-radius:50%; background:var(--cyan); border:2px solid #05141a; }
+  .squad-marker.me .dot{ background:var(--signal); border-color:#1a1204; }
+  .squad-marker .ring{
+    position:absolute; inset:-8px; border-radius:50%; border:1px solid var(--cyan); opacity:0;
+    animation:ring 2.4s ease-out infinite;
+  }
+  .squad-marker.me .ring{ border-color:var(--signal); }
+  @keyframes ring{ 0%{ transform:scale(0.4); opacity:.7;} 100%{ transform:scale(1.8); opacity:0;} }
+  .marker-label{
+    font-family:var(--mono); font-size:10px; color:var(--text); background:rgba(10,13,12,0.85);
+    padding:1px 5px; border-radius:2px; white-space:nowrap;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- JOIN SCREEN -->
+  <div id="join-screen">
+    <div class="radar-wrap"><div class="radar-sweep"></div></div>
+    <div class="join-card">
+      <p class="eyebrow">// squad tracker</p>
+      <h1>Připojit se k jednotce</h1>
+      <label for="username">Tvoje jméno</label>
+      <input id="username" maxlength="24" placeholder="např. Falcon" autocomplete="off" />
+      <label for="room">Kód místnosti</label>
+      <input id="room" maxlength="24" placeholder="např. VYLET-2026" autocomplete="off" />
+      <button id="join-btn">Vstoupit</button>
+      <p id="join-error"></p>
+    </div>
+  </div>
+
+  <!-- MAP SCREEN -->
+  <div id="map-screen">
+    <div id="topbar">
+      <span class="room-tag"><span id="status-dot"></span>ROOM <b id="room-label"></b></span>
+      <span class="room-tag" id="me-label"></span>
+    </div>
+    <div id="map"></div>
+    <div id="alert-toast"></div>
+    <div id="hud-bottom"></div>
+  </div>
+
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  const joinScreen = document.getElementById('join-screen');
+  const mapScreen = document.getElementById('map-screen');
+  const usernameInput = document.getElementById('username');
+  const roomInput = document.getElementById('room');
+  const joinBtn = document.getElementById('join-btn');
+  const joinError = document.getElementById('join-error');
+  const statusDot = document.getElementById('status-dot');
+  const roomLabel = document.getElementById('room-label');
+  const meLabel = document.getElementById('me-label');
+  const hudBottom = document.getElementById('hud-bottom');
+  const alertToast = document.getElementById('alert-toast');
+
+  let ws = null;
+  let reconnectDelay = 1000;
+  let username = '';
+  let room = '';
+  let map = null;
+  let selfLatLng = null;
+  const markers = {};      // username -> L.marker
+  const lastKnown = {};    // username -> {lat,lng}
+  let watchId = null;
+
+  function wsUrl(){
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return proto + '//' + location.host + '/ws';
+  }
+
+  function haversine(lat1, lng1, lat2, lng2){
+    const R = 6371000;
+    const toRad = d => d * Math.PI / 180;
+    const dphi = toRad(lat2-lat1), dl = toRad(lng2-lng1);
+    const a = Math.sin(dphi/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dl/2)**2;
+    return 2 * R * Math.asin(Math.sqrt(a));
+  }
+
+  function showToast(text){
+    alertToast.textContent = text;
+    alertToast.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(()=>alertToast.classList.remove('show'), 3200);
+  }
+
+  function markerIcon(isMe){
+    return L.divIcon({
+      className: '',
+      html: '<div class="squad-marker' + (isMe?' me':'') + '"><div class="ring"></div><div class="dot"></div></div>',
+      iconSize: [16,16],
+      iconAnchor: [8,8]
+    });
+  }
+
+  function upsertMarker(name, lat, lng, isMe){
+    lastKnown[name] = {lat, lng};
+    if (markers[name]){
+      markers[name].setLatLng([lat, lng]);
+    } else {
+      markers[name] = L.marker([lat, lng], {icon: markerIcon(isMe)})
+        .bindTooltip(name, {permanent:true, direction:'top', offset:[0,-10], className:'marker-label'})
+        .addTo(map);
+    }
+  }
+
+  function removeStaleMarkers(activeNames){
+    for (const name in markers){
+      if (!activeNames.has(name)){
+        map.removeLayer(markers[name]);
+        delete markers[name];
+        delete lastKnown[name];
+      }
+    }
+  }
+
+  function renderHud(users){
+    hudBottom.innerHTML = '';
+    users.forEach(u => {
+      const chip = document.createElement('div');
+      const isMe = u.username === username;
+      chip.className = 'chip' + (isMe ? ' self' : '');
+      let distText = '—';
+      if (!isMe && selfLatLng && u.lat != null){
+        const d = haversine(selfLatLng.lat, selfLatLng.lng, u.lat, u.lng);
+        distText = d < 1000 ? Math.round(d) + ' m' : (d/1000).toFixed(1) + ' km';
+      }
+      chip.innerHTML = '<span class="name">' + (isMe ? u.username + ' (ty)' : u.username) + '</span><span class="dist">' + distText + '</span>';
+      hudBottom.appendChild(chip);
+    });
+  }
+
+  function connect(){
+    ws = new WebSocket(wsUrl());
+
+    ws.onopen = () => {
+      reconnectDelay = 1000;
+      statusDot.classList.remove('offline','pulse');
+      ws.send(JSON.stringify({type:'join', username, room}));
+    };
+
+    ws.onmessage = (evt) => {
+      let msg;
+      try { msg = JSON.parse(evt.data); } catch(e){ return; }
+
+      if (msg.type === 'joined'){
+        startGeolocation();
+      } else if (msg.type === 'presence'){
+        const activeNames = new Set(msg.users.map(u => u.username));
+        msg.users.forEach(u => {
+          if (u.lat != null) upsertMarker(u.username, u.lat, u.lng, u.username === username);
+        });
+        removeStaleMarkers(activeNames);
+        renderHud(msg.users);
+      } else if (msg.type === 'proximity_alert'){
+        showToast('⚠ ' + msg.with + ' je ' + Math.round(msg.distance_m) + ' m od tebe');
+      }
+    };
+
+    ws.onclose = () => {
+      statusDot.classList.add('offline','pulse');
+      setTimeout(connect, reconnectDelay);
+      reconnectDelay = Math.min(reconnectDelay * 1.8, 20000);
+    };
+
+    ws.onerror = () => { ws.close(); };
+  }
+
+  function startGeolocation(){
+    if (watchId !== null) return;
+    if (!navigator.geolocation){
+      showToast('Geolokace není v tomto prohlížeči dostupná');
+      return;
+    }
+    watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const {latitude, longitude} = pos.coords;
+        selfLatLng = {lat:latitude, lng:longitude};
+        if (map._initialCentered !== true){
+          map.setView([latitude, longitude], 16);
+          map._initialCentered = true;
+        }
+        if (ws && ws.readyState === WebSocket.OPEN){
+          ws.send(JSON.stringify({type:'location', lat:latitude, lng:longitude}));
+        }
+      },
+      (err) => { showToast('Poloha: ' + err.message); },
+      { enableHighAccuracy:true, maximumAge:2000, timeout:15000 }
+    );
+  }
+
+  function initMap(){
+    map = L.map('map', {zoomControl:false, attributionControl:false}).setView([49.47,17.11], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19}).addTo(map);
+  }
+
+  joinBtn.addEventListener('click', () => {
+    const u = usernameInput.value.trim();
+    const r = roomInput.value.trim();
+    if (!u || !r){
+      joinError.textContent = 'Vyplň jméno i kód místnosti.';
+      return;
+    }
+    username = u; room = r;
+    joinError.textContent = '';
+    joinScreen.style.display = 'none';
+    mapScreen.style.display = 'flex';
+    roomLabel.textContent = room;
+    meLabel.textContent = username;
+    initMap();
+    connect();
+  });
+})();
+</script>
+</body>
+</html>
