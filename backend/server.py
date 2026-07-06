@@ -199,12 +199,17 @@ async def cleanup_background_tasks(app):
     app["reaper"].cancel()
 
 
+async def index(request):
+    return web.FileResponse(FRONTEND_DIR / "index.html")
+
+
 def create_app():
     init_db()
     app = web.Application()
     app.router.add_get("/health", health)
     app.router.add_get("/ws", websocket_handler)
-    app.router.add_static("/", FRONTEND_DIR, show_index=True)
+    app.router.add_get("/", index)
+    app.router.add_static("/", FRONTEND_DIR, show_index=False)
     app.on_startup.append(start_background_tasks)
     app.on_cleanup.append(cleanup_background_tasks)
     return app
