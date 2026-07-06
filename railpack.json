@@ -3,7 +3,9 @@
   "provider": "python",
   "steps": {
     "install": {
-"commands": ["pip install -r requirements.txt"]    }
+      "inputs": [{ "local": true }],
+      "commands": ["pip install -r requirements.txt"]
+    }
   },
   "deploy": {
     "startCommand": "python backend/server.py"
