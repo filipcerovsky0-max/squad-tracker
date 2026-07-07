@@ -21,10 +21,29 @@ RATE_LIMIT_SECONDS = 3
 GEOFENCE_METERS = 50
 HEARTBEAT_INTERVAL = 15
 HEARTBEAT_TIMEOUT = 40
+MAX_CHAT_CHARS = 500
+MAX_VOICE_B64_CHARS = 2_000_000  # ~1.5MB raw audio, generous for a short PTT clip
 
 # rooms[room_id] = { username: { "ws": WebSocketResponse, "lat": float, "lng": float,
 #                                 "last_location_ts": float, "last_seen": float } }
 rooms: dict[str, dict[str, dict]] = {}
+
+
+async def broadcast_to_room(room_id, msg: dict, exclude: str | None = None):
+    room = rooms.get(room_id)
+    if not room:
+        return
+    data = json.dumps(msg)
+    dead = []
+    for uname, entry in room.items():
+        if uname == exclude:
+            continue
+        try:
+            await entry["ws"].send_str(data)
+        except ConnectionResetError:
+            dead.append(uname)
+    for uname in dead:
+        room.pop(uname, None)
 
 
 def init_db():
@@ -159,6 +178,27 @@ async def websocket_handler(request):
 
             elif mtype == "ping":
                 await ws.send_str(json.dumps({"type": "pong"}))
+
+            elif mtype == "chat" and room_id and username:
+                text = str(data.get("text", "")).strip()[:MAX_CHAT_CHARS]
+                if not text:
+                    continue
+                await broadcast_to_room(
+                    room_id,
+                    {"type": "chat", "username": username, "text": text, "ts": time.time()},
+                    exclude=username,
+                )
+
+            elif mtype == "voice" and room_id and username:
+                audio_b64 = data.get("audio")
+                mime = data.get("mime", "audio/webm")
+                if not audio_b64 or len(audio_b64) > MAX_VOICE_B64_CHARS:
+                    continue
+                await broadcast_to_room(
+                    room_id,
+                    {"type": "voice", "username": username, "audio": audio_b64, "mime": mime},
+                    exclude=username,
+                )
 
     finally:
         if room_id and username and room_id in rooms:
