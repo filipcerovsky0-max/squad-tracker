@@ -98,6 +98,19 @@
   #status-dot.pulse{ animation:pulse 1.6s ease-in-out infinite; }
   @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
 
+  .topbar-right{ display:flex; align-items:center; gap:10px; }
+  .icon-btn{
+    position:relative; width:auto; margin:0; background:rgba(16,22,20,0.9); border:1px solid var(--line);
+    color:var(--text); font-family:var(--mono); font-size:11px; padding:6px 10px; border-radius:3px;
+    letter-spacing:.05em; text-transform:uppercase; cursor:pointer;
+  }
+  .icon-btn:active{ transform:none; }
+  .unread-dot{
+    position:absolute; top:-4px; right:-4px; width:9px; height:9px; border-radius:50%;
+    background:var(--danger); border:1px solid var(--ink); display:none;
+  }
+  .unread-dot.show{ display:block; }
+
   #hud-bottom{
     position:absolute; left:0; right:0; bottom:0; z-index:1000;
     background:linear-gradient(to top, rgba(10,13,12,0.95), transparent);
@@ -132,6 +145,59 @@
     font-family:var(--mono); font-size:10px; color:var(--text); background:rgba(10,13,12,0.85);
     padding:1px 5px; border-radius:2px; white-space:nowrap;
   }
+
+  /* ---------- WALKIE-TALKIE ---------- */
+  #ptt-btn{
+    position:absolute; right:16px; bottom:96px; z-index:1000;
+    width:66px; height:66px; margin:0; border-radius:50%;
+    background:var(--panel-2); border:2px solid var(--signal); color:var(--signal);
+    font-size:26px; display:flex; align-items:center; justify-content:center;
+    padding:0; box-shadow:0 0 0 rgba(255,180,84,0.5); user-select:none;
+  }
+  #ptt-btn.recording{
+    background:var(--danger); border-color:var(--danger); color:#2b0a0a;
+    animation:ptt-pulse 1s ease-in-out infinite;
+  }
+  @keyframes ptt-pulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(255,93,93,0.5);} 50%{ box-shadow:0 0 0 14px rgba(255,93,93,0);} }
+  #ptt-label{
+    position:absolute; right:14px; bottom:66px; z-index:1000; font-family:var(--mono);
+    font-size:10px; color:var(--text-dim); background:rgba(10,13,12,0.85); padding:2px 6px;
+    border-radius:2px; white-space:nowrap;
+  }
+  #speaking-indicator{
+    position:absolute; top:52px; left:50%; transform:translateX(-50%); z-index:1050;
+    font-family:var(--mono); font-size:12px; color:var(--cyan); background:rgba(16,22,20,0.9);
+    border:1px solid var(--cyan); padding:6px 14px; border-radius:3px; opacity:0;
+    transition:opacity .2s ease; pointer-events:none; white-space:nowrap;
+  }
+  #speaking-indicator.show{ opacity:1; }
+
+  /* ---------- CHAT PANEL ---------- */
+  #chat-panel{
+    position:absolute; inset:0; z-index:1200; background:rgba(8,11,10,0.97);
+    display:none; flex-direction:column;
+  }
+  #chat-panel.open{ display:flex; }
+  #chat-header{
+    display:flex; align-items:center; justify-content:space-between; padding:14px 16px;
+    border-bottom:1px solid var(--line); font-family:var(--mono);
+  }
+  #chat-header .title{ color:var(--signal); font-size:13px; letter-spacing:.08em; text-transform:uppercase; }
+  #chat-close{ width:auto; margin:0; background:transparent; border:1px solid var(--line); color:var(--text);
+    font-family:var(--mono); padding:6px 12px; font-size:12px; }
+  #chat-messages{ flex:1; overflow-y:auto; padding:14px 16px; display:flex; flex-direction:column; gap:10px; }
+  .chat-msg{ max-width:80%; }
+  .chat-msg .who{ font-family:var(--mono); font-size:10px; color:var(--cyan); margin-bottom:2px; }
+  .chat-msg.self .who{ color:var(--signal); }
+  .chat-msg .bubble{
+    background:var(--panel-2); border:1px solid var(--line); border-radius:3px; padding:8px 11px;
+    font-size:14px; line-height:1.4; word-break:break-word;
+  }
+  .chat-msg.self{ align-self:flex-end; }
+  .chat-msg.self .bubble{ border-color:var(--signal-dim); }
+  #chat-input-row{ display:flex; gap:8px; padding:12px 16px; border-top:1px solid var(--line); }
+  #chat-input-row input{ flex:1; margin:0; }
+  #chat-send{ width:auto; margin:0; padding:11px 18px; }
 </style>
 </head>
 <body>
@@ -156,11 +222,30 @@
   <div id="map-screen">
     <div id="topbar">
       <span class="room-tag"><span id="status-dot"></span>ROOM <b id="room-label"></b></span>
-      <span class="room-tag" id="me-label"></span>
+      <div class="topbar-right">
+        <span class="room-tag" id="me-label"></span>
+        <button class="icon-btn" id="chat-toggle">Chat<span class="unread-dot" id="unread-dot"></span></button>
+      </div>
     </div>
     <div id="map"></div>
     <div id="alert-toast"></div>
+    <div id="speaking-indicator"></div>
+    <p id="ptt-label">DRŽ A MLUV</p>
+    <button id="ptt-btn">🎙</button>
     <div id="hud-bottom"></div>
+
+    <!-- CHAT PANEL -->
+    <div id="chat-panel">
+      <div id="chat-header">
+        <span class="title">Chat jednotky</span>
+        <button id="chat-close">Zavřít</button>
+      </div>
+      <div id="chat-messages"></div>
+      <div id="chat-input-row">
+        <input id="chat-input" maxlength="500" placeholder="Napiš zprávu…" autocomplete="off" />
+        <button id="chat-send">Odeslat</button>
+      </div>
+    </div>
   </div>
 
 </div>
@@ -181,6 +266,15 @@
   const meLabel = document.getElementById('me-label');
   const hudBottom = document.getElementById('hud-bottom');
   const alertToast = document.getElementById('alert-toast');
+  const speakingIndicator = document.getElementById('speaking-indicator');
+  const pttBtn = document.getElementById('ptt-btn');
+  const chatToggle = document.getElementById('chat-toggle');
+  const chatPanel = document.getElementById('chat-panel');
+  const chatClose = document.getElementById('chat-close');
+  const chatMessages = document.getElementById('chat-messages');
+  const chatInput = document.getElementById('chat-input');
+  const chatSend = document.getElementById('chat-send');
+  const unreadDot = document.getElementById('unread-dot');
 
   let ws = null;
   let reconnectDelay = 1000;
@@ -191,6 +285,7 @@
   const markers = {};      // username -> L.marker
   const lastKnown = {};    // username -> {lat,lng}
   let watchId = null;
+  let hasUnread = false;
 
   function wsUrl(){
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -210,6 +305,13 @@
     alertToast.classList.add('show');
     clearTimeout(showToast._t);
     showToast._t = setTimeout(()=>alertToast.classList.remove('show'), 3200);
+  }
+
+  function showSpeaking(name){
+    speakingIndicator.textContent = '🔊 ' + name + ' mluví';
+    speakingIndicator.classList.add('show');
+    clearTimeout(showSpeaking._t);
+    showSpeaking._t = setTimeout(()=>speakingIndicator.classList.remove('show'), 2000);
   }
 
   function markerIcon(isMe){
@@ -258,6 +360,143 @@
     });
   }
 
+  // ---------- CHAT ----------
+  function appendChatMessage(who, text, isSelf){
+    const div = document.createElement('div');
+    div.className = 'chat-msg' + (isSelf ? ' self' : '');
+    const whoEl = document.createElement('div');
+    whoEl.className = 'who';
+    whoEl.textContent = isSelf ? 'ty' : who;
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = text;
+    div.appendChild(whoEl);
+    div.appendChild(bubble);
+    chatMessages.appendChild(div);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    if (!isSelf && !chatPanel.classList.contains('open')){
+      hasUnread = true;
+      unreadDot.classList.add('show');
+    }
+  }
+
+  function sendChat(){
+    const text = chatInput.value.trim();
+    if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(JSON.stringify({type:'chat', text}));
+    chatInput.value = '';
+  }
+
+  chatToggle.addEventListener('click', () => {
+    chatPanel.classList.add('open');
+    hasUnread = false;
+    unreadDot.classList.remove('show');
+    chatInput.focus();
+  });
+  chatClose.addEventListener('click', () => chatPanel.classList.remove('open'));
+  chatSend.addEventListener('click', sendChat);
+  chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });
+
+  // ---------- WALKIE-TALKIE ----------
+  let micStream = null;
+  let mediaRecorder = null;
+  let recordedChunks = [];
+  let isRecording = false;
+
+  async function ensureMic(){
+    if (micStream) return micStream;
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    return micStream;
+  }
+
+  function pickMimeType(){
+    const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/ogg'];
+    for (const c of candidates){
+      if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(c)) return c;
+    }
+    return '';
+  }
+
+  function blobToBase64(blob){
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function startRecording(){
+    if (isRecording) return;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      showToast('Mikrofon není v tomto prohlížeči dostupný');
+      return;
+    }
+    try {
+      const stream = await ensureMic();
+      recordedChunks = [];
+      const mimeType = pickMimeType();
+      mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) recordedChunks.push(e.data); };
+      mediaRecorder.start();
+      isRecording = true;
+      pttBtn.classList.add('recording');
+    } catch (err){
+      showToast('Mikrofon: ' + err.message);
+    }
+  }
+
+  function stopRecording(){
+    if (!isRecording || !mediaRecorder) return;
+    isRecording = false;
+    pttBtn.classList.remove('recording');
+    const finish = () => {
+      const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+      recordedChunks = [];
+      if (blob.size < 400) return; // too short / accidental tap
+      blobToBase64(blob).then((b64) => {
+        if (ws && ws.readyState === WebSocket.OPEN){
+          ws.send(JSON.stringify({ type:'voice', audio:b64, mime: blob.type || 'audio/webm' }));
+        }
+      });
+    };
+    mediaRecorder.onstop = finish;
+    if (mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+  }
+
+  pttBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startRecording(); }, { passive:false });
+  pttBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopRecording(); }, { passive:false });
+  pttBtn.addEventListener('touchcancel', (e) => { e.preventDefault(); stopRecording(); }, { passive:false });
+  pttBtn.addEventListener('mousedown', startRecording);
+  pttBtn.addEventListener('mouseup', stopRecording);
+  pttBtn.addEventListener('mouseleave', () => { if (isRecording) stopRecording(); });
+
+  let voiceQueue = [];
+  let voicePlaying = false;
+  function enqueueVoice(who, audioB64, mime){
+    voiceQueue.push({who, audioB64, mime});
+    if (!voicePlaying) playNextVoice();
+  }
+  function playNextVoice(){
+    if (voiceQueue.length === 0){ voicePlaying = false; return; }
+    voicePlaying = true;
+    const {who, audioB64, mime} = voiceQueue.shift();
+    let bytes;
+    try {
+      const byteChars = atob(audioB64);
+      bytes = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
+    } catch(e){ playNextVoice(); return; }
+    const blob = new Blob([bytes], { type: mime || 'audio/webm' });
+    const url = URL.createObjectURL(blob);
+    const audioEl = new Audio(url);
+    showSpeaking(who);
+    audioEl.onended = () => { URL.revokeObjectURL(url); playNextVoice(); };
+    audioEl.onerror = () => { URL.revokeObjectURL(url); playNextVoice(); };
+    audioEl.play().catch(() => { URL.revokeObjectURL(url); playNextVoice(); });
+  }
+
   function connect(){
     ws = new WebSocket(wsUrl());
 
@@ -282,6 +521,10 @@
         renderHud(msg.users);
       } else if (msg.type === 'proximity_alert'){
         showToast('⚠ ' + msg.with + ' je ' + Math.round(msg.distance_m) + ' m od tebe');
+      } else if (msg.type === 'chat'){
+        appendChatMessage(msg.username, msg.text, msg.username === username);
+      } else if (msg.type === 'voice'){
+        enqueueVoice(msg.username, msg.audio, msg.mime);
       }
     };
 
