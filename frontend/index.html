@@ -230,8 +230,8 @@
     <div id="map"></div>
     <div id="alert-toast"></div>
     <div id="speaking-indicator"></div>
-    <p id="ptt-label">DRŽ A MLUV</p>
-    <button id="ptt-btn">🎙</button>
+    <p id="ptt-label">DRZ A MLUV</p>
+    <button id="ptt-btn">PTT</button>
     <div id="hud-bottom"></div>
 
     <!-- CHAT PANEL -->
@@ -242,7 +242,7 @@
       </div>
       <div id="chat-messages"></div>
       <div id="chat-input-row">
-        <input id="chat-input" maxlength="500" placeholder="Napiš zprávu…" autocomplete="off" />
+        <input id="chat-input" maxlength="500" placeholder="Napis zpravu..." autocomplete="off" />
         <button id="chat-send">Odeslat</button>
       </div>
     </div>
@@ -308,7 +308,7 @@
   }
 
   function showSpeaking(name){
-    speakingIndicator.textContent = '🔊 ' + name + ' mluví';
+    speakingIndicator.textContent = '[AUDIO] ' + name + ' mluví';
     speakingIndicator.classList.add('show');
     clearTimeout(showSpeaking._t);
     showSpeaking._t = setTimeout(()=>speakingIndicator.classList.remove('show'), 2000);
@@ -350,7 +350,7 @@
       const chip = document.createElement('div');
       const isMe = u.username === username;
       chip.className = 'chip' + (isMe ? ' self' : '');
-      let distText = '—';
+      let distText = '-';
       if (!isMe && selfLatLng && u.lat != null){
         const d = haversine(selfLatLng.lat, selfLatLng.lng, u.lat, u.lng);
         distText = d < 1000 ? Math.round(d) + ' m' : (d/1000).toFixed(1) + ' km';
@@ -384,7 +384,7 @@
   function sendChat(){
     const text = chatInput.value.trim();
     if (!text || !ws || ws.readyState !== WebSocket.OPEN){
-      if (!ws || ws.readyState !== WebSocket.OPEN) showToast('Nejsi připojen — zpráva se neodeslala');
+      if (!ws || ws.readyState !== WebSocket.OPEN) showToast('Nejsi připojen - zpráva se neodeslala');
       return;
     }
     ws.send(JSON.stringify({type:'chat', text}));
@@ -489,8 +489,8 @@
     let bytes;
     try {
       const byteChars = atob(audioB64);
-      bytes = new Uint8Array(byteChars.
-for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
+      bytes = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
     } catch(e){ playNextVoice(); return; }
     const blob = new Blob([bytes], { type: mime || 'audio/webm' });
     const url = URL.createObjectURL(blob);
@@ -524,7 +524,7 @@ for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
         removeStaleMarkers(activeNames);
         renderHud(msg.users);
       } else if (msg.type === 'proximity_alert'){
-        showToast('⚠ ' + msg.with + ' je ' + Math.round(msg.distance_m) + ' m od tebe');
+        showToast('! ' + msg.with + ' je ' + Math.round(msg.distance_m) + ' m od tebe');
       } else if (msg.type === 'chat'){
         appendChatMessage(msg.username, msg.text, msg.username === username);
       } else if (msg.type === 'voice'){
