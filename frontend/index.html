@@ -80,6 +80,16 @@
   button:disabled{ background:var(--signal-dim); color:#3a2f18; }
   #join-error{ color:var(--danger); font-family:var(--mono); font-size:12px; margin-top:12px; min-height:14px;}
 
+  .lang-switch{
+    position:absolute; top:14px; right:14px; z-index:3; display:flex; gap:6px;
+  }
+  .lang-switch button{
+    width:auto; margin:0; padding:6px 10px; font-size:11px; letter-spacing:.04em;
+    background:rgba(16,22,20,0.9); border:1px solid var(--line); color:var(--text-dim);
+    font-family:var(--mono); text-transform:uppercase; border-radius:3px;
+  }
+  .lang-switch button.active{ border-color:var(--signal); color:var(--signal); }
+
   /* ---------- MAP SCREEN ---------- */
   #map-screen{ flex:1; display:none; flex-direction:column; position:relative;}
   #map{ flex:1; background:#0a0d0c; }
@@ -206,12 +216,18 @@
   <!-- JOIN SCREEN -->
   <div id="join-screen">
     <div class="radar-wrap"><div class="radar-sweep"></div></div>
+    <div class="lang-switch" id="lang-switch">
+      <button type="button" data-lang="cs">CS</button>
+      <button type="button" data-lang="en">EN</button>
+      <button type="button" data-lang="fr">FR</button>
+      <button type="button" data-lang="es">ES</button>
+    </div>
     <div class="join-card">
       <p class="eyebrow">// squad tracker</p>
-      <h1>Připojit se k jednotce</h1>
-      <label for="username">Tvoje jméno</label>
+      <h1 id="t-title">Připojit se k jednotce</h1>
+      <label for="username" id="t-name-label">Tvoje jméno</label>
       <input id="username" maxlength="24" placeholder="např. Falcon" autocomplete="off" />
-      <label for="room">Kód místnosti</label>
+      <label for="room" id="t-room-label">Kód místnosti</label>
       <input id="room" maxlength="24" placeholder="např. VYLET-2026" autocomplete="off" />
       <button id="join-btn">Vstoupit</button>
       <p id="join-error"></p>
@@ -221,23 +237,23 @@
   <!-- MAP SCREEN -->
   <div id="map-screen">
     <div id="topbar">
-      <span class="room-tag"><span id="status-dot"></span>ROOM <b id="room-label"></b></span>
+      <span class="room-tag"><span id="status-dot"></span><span id="t-room-prefix">ROOM</span> <b id="room-label"></b></span>
       <div class="topbar-right">
         <span class="room-tag" id="me-label"></span>
-        <button class="icon-btn" id="chat-toggle">Chat<span class="unread-dot" id="unread-dot"></span></button>
+        <button class="icon-btn" id="chat-toggle"><span id="t-chat-btn">Chat</span><span class="unread-dot" id="unread-dot"></span></button>
       </div>
     </div>
     <div id="map"></div>
     <div id="alert-toast"></div>
     <div id="speaking-indicator"></div>
-    <p id="ptt-label">DRZ A MLUV</p>
+    <p id="ptt-label">DRŽ A MLUV</p>
     <button id="ptt-btn">PTT</button>
     <div id="hud-bottom"></div>
 
     <!-- CHAT PANEL -->
     <div id="chat-panel">
       <div id="chat-header">
-        <span class="title">Chat jednotky</span>
+        <span class="title" id="t-chat-title">Chat jednotky</span>
         <button id="chat-close">Zavřít</button>
       </div>
       <div id="chat-messages"></div>
@@ -254,6 +270,99 @@
 <script>
 (function(){
   "use strict";
+
+  const I18N = {
+    cs: {
+      title: 'Připojit se k jednotce', nameLabel: 'Tvoje jméno', namePlaceholder: 'např. Falcon',
+      roomLabel: 'Kód místnosti', roomPlaceholder: 'např. VYLET-2026', joinBtn: 'Vstoupit',
+      joinError: 'Vyplň jméno i kód místnosti.', roomPrefix: 'ROOM', chatBtn: 'Chat',
+      pttLabel: 'DRŽ A MLUV', chatTitle: 'Chat jednotky', closeBtn: 'Zavřít',
+      chatPlaceholder: 'Napis zpravu...', sendBtn: 'Odeslat', you: 'ty', meSuffix: ' (ty)',
+      notConnected: 'Nejsi připojen - zpráva se neodeslala',
+      micUnavailable: 'Mikrofon není v tomto prohlížeči dostupný', micError: 'Mikrofon: {err}',
+      geoUnavailable: 'Geolokace není v tomto prohlížeči dostupná', geoError: 'Poloha: {err}',
+      proximity: '! {name} je {dist} m od tebe', speaking: '[AUDIO] {name} mluví'
+    },
+    en: {
+      title: 'Join the squad', nameLabel: 'Your name', namePlaceholder: 'e.g. Falcon',
+      roomLabel: 'Room code', roomPlaceholder: 'e.g. TRIP-2026', joinBtn: 'Join',
+      joinError: 'Enter both a name and a room code.', roomPrefix: 'ROOM', chatBtn: 'Chat',
+      pttLabel: 'HOLD TO TALK', chatTitle: 'Squad chat', closeBtn: 'Close',
+      chatPlaceholder: 'Type a message...', sendBtn: 'Send', you: 'you', meSuffix: ' (you)',
+      notConnected: 'Not connected - message was not sent',
+      micUnavailable: 'Microphone is not available in this browser', micError: 'Microphone: {err}',
+      geoUnavailable: 'Geolocation is not available in this browser', geoError: 'Location: {err}',
+      proximity: '! {name} is {dist} m from you', speaking: '[AUDIO] {name} is talking'
+    },
+    fr: {
+      title: "Rejoindre l'equipe", nameLabel: 'Ton nom', namePlaceholder: 'ex. Falcon',
+      roomLabel: 'Code de la salle', roomPlaceholder: 'ex. SORTIE-2026', joinBtn: 'Rejoindre',
+      joinError: 'Indique ton nom et le code de la salle.', roomPrefix: 'SALLE', chatBtn: 'Chat',
+      pttLabel: 'MAINTENIR POUR PARLER', chatTitle: "Chat de l'equipe", closeBtn: 'Fermer',
+      chatPlaceholder: 'Ecris un message...', sendBtn: 'Envoyer', you: 'toi', meSuffix: ' (toi)',
+      notConnected: 'Non connecte - message non envoye',
+      micUnavailable: 'Microphone indisponible dans ce navigateur', micError: 'Microphone : {err}',
+      geoUnavailable: 'Geolocalisation indisponible dans ce navigateur', geoError: 'Position : {err}',
+      proximity: '! {name} est a {dist} m de toi', speaking: '[AUDIO] {name} parle'
+    },
+    es: {
+      title: 'Unirse al equipo', nameLabel: 'Tu nombre', namePlaceholder: 'ej. Falcon',
+      roomLabel: 'Codigo de sala', roomPlaceholder: 'ej. VIAJE-2026', joinBtn: 'Entrar',
+      joinError: 'Introduce tu nombre y el codigo de sala.', roomPrefix: 'SALA', chatBtn: 'Chat',
+      pttLabel: 'MANTEN PARA HABLAR', chatTitle: 'Chat del equipo', closeBtn: 'Cerrar',
+      chatPlaceholder: 'Escribe un mensaje...', sendBtn: 'Enviar', you: 'tu', meSuffix: ' (tu)',
+      notConnected: 'No conectado - mensaje no enviado',
+      micUnavailable: 'Microfono no disponible en este navegador', micError: 'Microfono: {err}',
+      geoUnavailable: 'Geolocalizacion no disponible en este navegador', geoError: 'Ubicacion: {err}',
+      proximity: '! {name} esta a {dist} m de ti', speaking: '[AUDIO] {name} esta hablando'
+    }
+  };
+
+  function detectDefaultLang(){
+    const saved = localStorage.getItem('sq_lang');
+    if (saved && I18N[saved]) return saved;
+    const browserLang = (navigator.language || 'en').slice(0, 2);
+    return I18N[browserLang] ? browserLang : 'en';
+  }
+
+  let currentLang = detectDefaultLang();
+
+  function t(key, vars){
+    let str = (I18N[currentLang] && I18N[currentLang][key]) || I18N.en[key] || key;
+    if (vars){
+      for (const k in vars) str = str.replace('{' + k + '}', vars[k]);
+    }
+    return str;
+  }
+
+  function applyTranslations(){
+    document.getElementById('t-title').textContent = t('title');
+    document.getElementById('t-name-label').textContent = t('nameLabel');
+    document.getElementById('t-room-label').textContent = t('roomLabel');
+    document.getElementById('t-room-prefix').textContent = t('roomPrefix');
+    document.getElementById('t-chat-btn').textContent = t('chatBtn');
+    document.getElementById('t-chat-title').textContent = t('chatTitle');
+    document.getElementById('username').placeholder = t('namePlaceholder');
+    document.getElementById('room').placeholder = t('roomPlaceholder');
+    document.getElementById('join-btn').textContent = t('joinBtn');
+    document.getElementById('ptt-label').textContent = t('pttLabel');
+    document.getElementById('chat-close').textContent = t('closeBtn');
+    document.getElementById('chat-input').placeholder = t('chatPlaceholder');
+    document.getElementById('chat-send').textContent = t('sendBtn');
+    document.querySelectorAll('#lang-switch button').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.lang === currentLang);
+    });
+  }
+
+  document.querySelectorAll('#lang-switch button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentLang = btn.dataset.lang;
+      localStorage.setItem('sq_lang', currentLang);
+      applyTranslations();
+    });
+  });
+
+  applyTranslations();
 
   const joinScreen = document.getElementById('join-screen');
   const mapScreen = document.getElementById('map-screen');
@@ -308,7 +417,7 @@
   }
 
   function showSpeaking(name){
-    speakingIndicator.textContent = '[AUDIO] ' + name + ' mluví';
+    speakingIndicator.textContent = t('speaking', {name: name});
     speakingIndicator.classList.add('show');
     clearTimeout(showSpeaking._t);
     showSpeaking._t = setTimeout(()=>speakingIndicator.classList.remove('show'), 2000);
@@ -355,7 +464,7 @@
         const d = haversine(selfLatLng.lat, selfLatLng.lng, u.lat, u.lng);
         distText = d < 1000 ? Math.round(d) + ' m' : (d/1000).toFixed(1) + ' km';
       }
-      chip.innerHTML = '<span class="name">' + (isMe ? u.username + ' (ty)' : u.username) + '</span><span class="dist">' + distText + '</span>';
+      chip.innerHTML = '<span class="name">' + (isMe ? u.username + t('meSuffix') : u.username) + '</span><span class="dist">' + distText + '</span>';
       hudBottom.appendChild(chip);
     });
   }
@@ -366,7 +475,7 @@
     div.className = 'chat-msg' + (isSelf ? ' self' : '');
     const whoEl = document.createElement('div');
     whoEl.className = 'who';
-    whoEl.textContent = isSelf ? 'ty' : who;
+    whoEl.textContent = isSelf ? t('you') : who;
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
     bubble.textContent = text;
@@ -384,7 +493,7 @@
   function sendChat(){
     const text = chatInput.value.trim();
     if (!text || !ws || ws.readyState !== WebSocket.OPEN){
-      if (!ws || ws.readyState !== WebSocket.OPEN) showToast('Nejsi připojen - zpráva se neodeslala');
+      if (!ws || ws.readyState !== WebSocket.OPEN) showToast(t('notConnected'));
       return;
     }
     ws.send(JSON.stringify({type:'chat', text}));
@@ -434,7 +543,7 @@
   async function startRecording(){
     if (isRecording) return;
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-      showToast('Mikrofon není v tomto prohlížeči dostupný');
+      showToast(t('micUnavailable'));
       return;
     }
     try {
@@ -447,7 +556,7 @@
       isRecording = true;
       pttBtn.classList.add('recording');
     } catch (err){
-      showToast('Mikrofon: ' + err.message);
+      showToast(t('micError', {err: err.message}));
     }
   }
 
@@ -524,7 +633,7 @@
         removeStaleMarkers(activeNames);
         renderHud(msg.users);
       } else if (msg.type === 'proximity_alert'){
-        showToast('! ' + msg.with + ' je ' + Math.round(msg.distance_m) + ' m od tebe');
+        showToast(t('proximity', {name: msg.with, dist: Math.round(msg.distance_m)}));
       } else if (msg.type === 'chat'){
         appendChatMessage(msg.username, msg.text, msg.username === username);
       } else if (msg.type === 'voice'){
@@ -544,7 +653,7 @@
   function startGeolocation(){
     if (watchId !== null) return;
     if (!navigator.geolocation){
-      showToast('Geolokace není v tomto prohlížeči dostupná');
+      showToast(t('geoUnavailable'));
       return;
     }
     watchId = navigator.geolocation.watchPosition(
@@ -559,7 +668,7 @@
           ws.send(JSON.stringify({type:'location', lat:latitude, lng:longitude}));
         }
       },
-      (err) => { showToast('Poloha: ' + err.message); },
+      (err) => { showToast(t('geoError', {err: err.message})); },
       { enableHighAccuracy:true, maximumAge:2000, timeout:15000 }
     );
   }
@@ -573,7 +682,7 @@
     const u = usernameInput.value.trim();
     const r = roomInput.value.trim();
     if (!u || !r){
-      joinError.textContent = 'Vyplň jméno i kód místnosti.';
+      joinError.textContent = t('joinError');
       return;
     }
     username = u; room = r;
