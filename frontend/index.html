@@ -1,700 +1,156 @@
 <!DOCTYPE html>
-<html lang="cs">
+<html>
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>Squad Tracker</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
-
-  :root{
-    --ink:#0a0d0c;
-    --panel:#101614;
-    --panel-2:#151d1a;
-    --line:#22322b;
-    --signal:#ffb454;
-    --signal-dim:#8a6a3a;
-    --cyan:#4cc9f0;
-    --danger:#ff5d5d;
-    --text:#e7ede9;
-    --text-dim:#7c8f89;
-    --mono:'IBM Plex Mono', ui-monospace, monospace;
-    --sans:'Inter', system-ui, sans-serif;
-  }
-  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-  html,body{height:100%; margin:0; overscroll-behavior:none;}
-  body{
-    background:var(--ink); color:var(--text); font-family:var(--sans);
-    display:flex; flex-direction:column;
-  }
-  #app{position:fixed; inset:0; display:flex; flex-direction:column;}
-
-  /* ---------- JOIN SCREEN ---------- */
-  #join-screen{
-    flex:1; display:flex; align-items:center; justify-content:center;
-    position:relative; overflow:hidden; padding:24px;
-  }
-  .radar-wrap{
-    position:absolute; top:50%; left:50%; width:min(140vw,900px); height:min(140vw,900px);
-    transform:translate(-50%,-50%);
-    border-radius:50%;
-    background:
-      repeating-radial-gradient(circle, transparent 0, transparent 68px, rgba(255,180,84,0.06) 69px, transparent 70px),
-      radial-gradient(circle, rgba(255,180,84,0.05), transparent 60%);
-    border:1px solid var(--line);
-  }
-  .radar-sweep{
-    position:absolute; inset:0; border-radius:50%; overflow:hidden;
-    animation:spin 5s linear infinite;
-  }
-  .radar-sweep::before{
-    content:''; position:absolute; inset:0;
-    background:conic-gradient(from 0deg, rgba(255,180,84,0.35), transparent 35%);
-  }
-  @keyframes spin{ to{ transform:rotate(360deg); } }
-  @media (prefers-reduced-motion: reduce){ .radar-sweep{ animation:none; } }
-
-  .join-card{
-    position:relative; z-index:2; width:100%; max-width:340px;
-    background:rgba(16,22,20,0.9); border:1px solid var(--line); border-radius:4px;
-    padding:28px 24px; backdrop-filter:blur(6px);
-  }
-  .eyebrow{
-    font-family:var(--mono); font-size:11px; letter-spacing:.18em; color:var(--signal);
-    text-transform:uppercase; margin:0 0 6px;
-  }
-  h1{ font-family:var(--mono); font-size:22px; font-weight:600; margin:0 0 20px; color:var(--text);}
-  label{ display:block; font-family:var(--mono); font-size:11px; color:var(--text-dim); letter-spacing:.08em; margin:14px 0 6px; text-transform:uppercase;}
-  input{
-    width:100%; background:var(--panel-2); border:1px solid var(--line); color:var(--text);
-    font-family:var(--mono); font-size:15px; padding:11px 12px; border-radius:3px; outline:none;
-  }
-  input:focus{ border-color:var(--signal); }
-  button{
-    width:100%; margin-top:22px; background:var(--signal); color:#1a1204; border:none;
-    font-family:var(--mono); font-weight:700; font-size:14px; letter-spacing:.06em;
-    padding:13px; border-radius:3px; cursor:pointer; text-transform:uppercase;
-  }
-  button:active{ transform:scale(0.98); }
-  button:disabled{ background:var(--signal-dim); color:#3a2f18; }
-  #join-error{ color:var(--danger); font-family:var(--mono); font-size:12px; margin-top:12px; min-height:14px;}
-
-  .lang-switch{
-    position:absolute; top:14px; right:14px; z-index:3; display:flex; gap:6px;
-  }
-  .lang-switch button{
-    width:auto; margin:0; padding:6px 10px; font-size:11px; letter-spacing:.04em;
-    background:rgba(16,22,20,0.9); border:1px solid var(--line); color:var(--text-dim);
-    font-family:var(--mono); text-transform:uppercase; border-radius:3px;
-  }
-  .lang-switch button.active{ border-color:var(--signal); color:var(--signal); }
-
-  /* ---------- MAP SCREEN ---------- */
-  #map-screen{ flex:1; display:none; flex-direction:column; position:relative;}
-  #map{ flex:1; background:#0a0d0c; }
-  .leaflet-container{ background:#0a0d0c; }
-
-  #topbar{
-    position:absolute; top:0; left:0; right:0; z-index:1000;
-    display:flex; align-items:center; justify-content:space-between;
-    padding:10px 14px; background:linear-gradient(to bottom, rgba(10,13,12,0.92), transparent);
-    font-family:var(--mono); font-size:12px;
-  }
-  .room-tag{ color:var(--text-dim); }
-  .room-tag b{ color:var(--signal); letter-spacing:.05em; }
-  #status-dot{ display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--signal); margin-right:6px; }
-  #status-dot.offline{ background:var(--danger); }
-  #status-dot.pulse{ animation:pulse 1.6s ease-in-out infinite; }
-  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
-
-  .topbar-right{ display:flex; align-items:center; gap:10px; }
-  .icon-btn{
-    position:relative; width:auto; margin:0; background:rgba(16,22,20,0.9); border:1px solid var(--line);
-    color:var(--text); font-family:var(--mono); font-size:11px; padding:6px 10px; border-radius:3px;
-    letter-spacing:.05em; text-transform:uppercase; cursor:pointer;
-  }
-  .icon-btn:active{ transform:none; }
-  .unread-dot{
-    position:absolute; top:-4px; right:-4px; width:9px; height:9px; border-radius:50%;
-    background:var(--danger); border:1px solid var(--ink); display:none;
-  }
-  .unread-dot.show{ display:block; }
-
-  #hud-bottom{
-    position:absolute; left:0; right:0; bottom:0; z-index:1000;
-    background:linear-gradient(to top, rgba(10,13,12,0.95), transparent);
-    padding:16px 12px 14px; display:flex; gap:8px; overflow-x:auto;
-  }
-  .chip{
-    flex:0 0 auto; background:rgba(16,22,20,0.9); border:1px solid var(--line); border-radius:3px;
-    padding:8px 12px; font-family:var(--mono); font-size:11px; min-width:96px;
-  }
-  .chip .name{ color:var(--text); font-weight:600; display:block; margin-bottom:2px;}
-  .chip .dist{ color:var(--cyan); }
-  .chip.self .name{ color:var(--signal); }
-
-  #alert-toast{
-    position:absolute; top:52px; left:50%; transform:translateX(-50%) translateY(-20px);
-    background:var(--danger); color:#2b0a0a; font-family:var(--mono); font-weight:700;
-    font-size:12px; padding:8px 14px; border-radius:3px; z-index:1100; opacity:0;
-    transition:transform .25s ease, opacity .25s ease; pointer-events:none; white-space:nowrap;
-  }
-  #alert-toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
-
-  .squad-marker{ position:relative; width:16px; height:16px; }
-  .squad-marker .dot{ width:12px; height:12px; border-radius:50%; background:var(--cyan); border:2px solid #05141a; }
-  .squad-marker.me .dot{ background:var(--signal); border-color:#1a1204; }
-  .squad-marker .ring{
-    position:absolute; inset:-8px; border-radius:50%; border:1px solid var(--cyan); opacity:0;
-    animation:ring 2.4s ease-out infinite;
-  }
-  .squad-marker.me .ring{ border-color:var(--signal); }
-  @keyframes ring{ 0%{ transform:scale(0.4); opacity:.7;} 100%{ transform:scale(1.8); opacity:0;} }
-  .marker-label{
-    font-family:var(--mono); font-size:10px; color:var(--text); background:rgba(10,13,12,0.85);
-    padding:1px 5px; border-radius:2px; white-space:nowrap;
-  }
-
-  /* ---------- WALKIE-TALKIE ---------- */
-  #ptt-btn{
-    position:absolute; right:16px; bottom:96px; z-index:1000;
-    width:66px; height:66px; margin:0; border-radius:50%;
-    background:var(--panel-2); border:2px solid var(--signal); color:var(--signal);
-    font-size:26px; display:flex; align-items:center; justify-content:center;
-    padding:0; box-shadow:0 0 0 rgba(255,180,84,0.5); user-select:none;
-  }
-  #ptt-btn.recording{
-    background:var(--danger); border-color:var(--danger); color:#2b0a0a;
-    animation:ptt-pulse 1s ease-in-out infinite;
-  }
-  @keyframes ptt-pulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(255,93,93,0.5);} 50%{ box-shadow:0 0 0 14px rgba(255,93,93,0);} }
-  #ptt-label{
-    position:absolute; right:14px; bottom:66px; z-index:1000; font-family:var(--mono);
-    font-size:10px; color:var(--text-dim); background:rgba(10,13,12,0.85); padding:2px 6px;
-    border-radius:2px; white-space:nowrap;
-  }
-  #speaking-indicator{
-    position:absolute; top:52px; left:50%; transform:translateX(-50%); z-index:1050;
-    font-family:var(--mono); font-size:12px; color:var(--cyan); background:rgba(16,22,20,0.9);
-    border:1px solid var(--cyan); padding:6px 14px; border-radius:3px; opacity:0;
-    transition:opacity .2s ease; pointer-events:none; white-space:nowrap;
-  }
-  #speaking-indicator.show{ opacity:1; }
-
-  /* ---------- CHAT PANEL ---------- */
-  #chat-panel{
-    position:absolute; inset:0; z-index:1200; background:rgba(8,11,10,0.97);
-    display:none; flex-direction:column;
-  }
-  #chat-panel.open{ display:flex; }
-  #chat-header{
-    display:flex; align-items:center; justify-content:space-between; padding:14px 16px;
-    border-bottom:1px solid var(--line); font-family:var(--mono);
-  }
-  #chat-header .title{ color:var(--signal); font-size:13px; letter-spacing:.08em; text-transform:uppercase; }
-  #chat-close{ width:auto; margin:0; background:transparent; border:1px solid var(--line); color:var(--text);
-    font-family:var(--mono); padding:6px 12px; font-size:12px; }
-  #chat-messages{ flex:1; overflow-y:auto; padding:14px 16px; display:flex; flex-direction:column; gap:10px; }
-  .chat-msg{ max-width:80%; }
-  .chat-msg .who{ font-family:var(--mono); font-size:10px; color:var(--cyan); margin-bottom:2px; }
-  .chat-msg.self .who{ color:var(--signal); }
-  .chat-msg .bubble{
-    background:var(--panel-2); border:1px solid var(--line); border-radius:3px; padding:8px 11px;
-    font-size:14px; line-height:1.4; word-break:break-word;
-  }
-  .chat-msg.self{ align-self:flex-end; }
-  .chat-msg.self .bubble{ border-color:var(--signal-dim); }
-  #chat-input-row{ display:flex; gap:8px; padding:12px 16px; border-top:1px solid var(--line); }
-  #chat-input-row input{ flex:1; margin:0; }
-  #chat-send{ width:auto; margin:0; padding:11px 18px; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HDN Phish - Social Media Toolkit</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 10px;
+            font-size: 48px;
+        }
+        .subtitle {
+            text-align: center;
+            color: rgba(255,255,255,0.8);
+            margin-bottom: 40px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+        .card-icon { font-size: 48px; margin-bottom: 15px; }
+        .card h3 { color: #333; margin-bottom: 10px; }
+        .card p { color: #666; font-size: 12px; }
+        .url-box {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 30px;
+            text-align: center;
+        }
+        .url-box p { color: #888; margin-bottom: 5px; }
+        .url-box code {
+            color: #00ff00;
+            background: #2d2d2d;
+            padding: 8px 15px;
+            border-radius: 5px;
+            display: inline-block;
+            font-size: 14px;
+        }
+        .footer {
+            text-align: center;
+            color: rgba(255,255,255,0.6);
+            margin-top: 40px;
+            font-size: 12px;
+        }
+    </style>
 </head>
 <body>
-<div id="app">
-
-  <!-- JOIN SCREEN -->
-  <div id="join-screen">
-    <div class="radar-wrap"><div class="radar-sweep"></div></div>
-    <div class="lang-switch" id="lang-switch">
-      <button type="button" data-lang="cs">CS</button>
-      <button type="button" data-lang="en">EN</button>
-      <button type="button" data-lang="fr">FR</button>
-      <button type="button" data-lang="es">ES</button>
+    <div class="container">
+        <h1>🎭 HDN Phish Toolkit</h1>
+        <div class="subtitle">Select a platform for phishing simulation</div>
+        
+        <div class="grid">
+            <div class="card" onclick="selectPage('instagram')">
+                <div class="card-icon">📷</div>
+                <h3>Instagram</h3>
+                <p>Instagram login page</p>
+            </div>
+            <div class="card" onclick="selectPage('facebook')">
+                <div class="card-icon">📘</div>
+                <h3>Facebook</h3>
+                <p>Facebook login page</p>
+            </div>
+            <div class="card" onclick="selectPage('google')">
+                <div class="card-icon">🔐</div>
+                <h3>Google</h3>
+                <p>Google/Gmail login</p>
+            </div>
+            <div class="card" onclick="selectPage('twitter')">
+                <div class="card-icon">𝕏</div>
+                <h3>Twitter/X</h3>
+                <p>Twitter login page</p>
+            </div>
+            <div class="card" onclick="selectPage('linkedin')">
+                <div class="card-icon">🔗</div>
+                <h3>LinkedIn</h3>
+                <p>LinkedIn login page</p>
+            </div>
+            <div class="card" onclick="selectPage('snapchat')">
+                <div class="card-icon">👻</div>
+                <h3>Snapchat</h3>
+                <p>Snapchat login page</p>
+            </div>
+            <div class="card" onclick="selectPage('github')">
+                <div class="card-icon">🐙</div>
+                <h3>GitHub</h3>
+                <p>GitHub login page</p>
+            </div>
+            <div class="card" onclick="selectPage('netflix')">
+                <div class="card-icon">🎬</div>
+                <h3>Netflix</h3>
+                <p>Netflix login page</p>
+            </div>
+            <div class="card" onclick="selectPage('tiktok')">
+                <div class="card-icon">🎵</div>
+                <h3>TikTok</h3>
+                <p> Free TikTok  Like</p>
+            </div>
+        </div>
+        
+        <div class="url-box">
+            <p>📱 Your Public Link (Send to target)</p>
+            <code id="publicUrl">Loading...</code>
+            <p style="margin-top: 10px;">➕ Add /page-name to open specific page</p>
+            <p style="font-size: 11px;">Example: /instagram, /facebook, /google, /twitter, /linkedin, /snapchat, /github, /netflix, /tiktok</p>
+        </div>
+        
+        <div class="footer">
+            🔒 Educational Purpose Only | HasnainDarkNet
+        </div>
     </div>
-    <div class="join-card">
-      <p class="eyebrow">// squad tracker</p>
-      <h1 id="t-title">Připojit se k jednotce</h1>
-      <label for="username" id="t-name-label">Tvoje jméno</label>
-      <input id="username" maxlength="24" placeholder="např. Falcon" autocomplete="off" />
-      <label for="room" id="t-room-label">Kód místnosti</label>
-      <input id="room" maxlength="24" placeholder="např. VYLET-2026" autocomplete="off" />
-      <button id="join-btn">Vstoupit</button>
-      <p id="join-error"></p>
-    </div>
-  </div>
-
-  <!-- MAP SCREEN -->
-  <div id="map-screen">
-    <div id="topbar">
-      <span class="room-tag"><span id="status-dot"></span><span id="t-room-prefix">ROOM</span> <b id="room-label"></b></span>
-      <div class="topbar-right">
-        <span class="room-tag" id="me-label"></span>
-        <button class="icon-btn" id="chat-toggle"><span id="t-chat-btn">Chat</span><span class="unread-dot" id="unread-dot"></span></button>
-      </div>
-    </div>
-    <div id="map"></div>
-    <div id="alert-toast"></div>
-    <div id="speaking-indicator"></div>
-    <p id="ptt-label">DRŽ A MLUV</p>
-    <button id="ptt-btn">PTT</button>
-    <div id="hud-bottom"></div>
-
-    <!-- CHAT PANEL -->
-    <div id="chat-panel">
-      <div id="chat-header">
-        <span class="title" id="t-chat-title">Chat jednotky</span>
-        <button id="chat-close">Zavřít</button>
-      </div>
-      <div id="chat-messages"></div>
-      <div id="chat-input-row">
-        <input id="chat-input" maxlength="500" placeholder="Napis zpravu..." autocomplete="off" />
-        <button id="chat-send">Odeslat</button>
-      </div>
-    </div>
-  </div>
-
-</div>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-(function(){
-  "use strict";
-
-  const I18N = {
-    cs: {
-      title: 'Připojit se k jednotce', nameLabel: 'Tvoje jméno', namePlaceholder: 'např. Falcon',
-      roomLabel: 'Kód místnosti', roomPlaceholder: 'např. VYLET-2026', joinBtn: 'Vstoupit',
-      joinError: 'Vyplň jméno i kód místnosti.', roomPrefix: 'ROOM', chatBtn: 'Chat',
-      pttLabel: 'DRŽ A MLUV', chatTitle: 'Chat jednotky', closeBtn: 'Zavřít',
-      chatPlaceholder: 'Napis zpravu...', sendBtn: 'Odeslat', you: 'ty', meSuffix: ' (ty)',
-      notConnected: 'Nejsi připojen - zpráva se neodeslala',
-      micUnavailable: 'Mikrofon není v tomto prohlížeči dostupný', micError: 'Mikrofon: {err}',
-      geoUnavailable: 'Geolokace není v tomto prohlížeči dostupná', geoError: 'Poloha: {err}',
-      proximity: '! {name} je {dist} m od tebe', speaking: '[AUDIO] {name} mluví'
-    },
-    en: {
-      title: 'Join the squad', nameLabel: 'Your name', namePlaceholder: 'e.g. Falcon',
-      roomLabel: 'Room code', roomPlaceholder: 'e.g. TRIP-2026', joinBtn: 'Join',
-      joinError: 'Enter both a name and a room code.', roomPrefix: 'ROOM', chatBtn: 'Chat',
-      pttLabel: 'HOLD TO TALK', chatTitle: 'Squad chat', closeBtn: 'Close',
-      chatPlaceholder: 'Type a message...', sendBtn: 'Send', you: 'you', meSuffix: ' (you)',
-      notConnected: 'Not connected - message was not sent',
-      micUnavailable: 'Microphone is not available in this browser', micError: 'Microphone: {err}',
-      geoUnavailable: 'Geolocation is not available in this browser', geoError: 'Location: {err}',
-      proximity: '! {name} is {dist} m from you', speaking: '[AUDIO] {name} is talking'
-    },
-    fr: {
-      title: "Rejoindre l'equipe", nameLabel: 'Ton nom', namePlaceholder: 'ex. Falcon',
-      roomLabel: 'Code de la salle', roomPlaceholder: 'ex. SORTIE-2026', joinBtn: 'Rejoindre',
-      joinError: 'Indique ton nom et le code de la salle.', roomPrefix: 'SALLE', chatBtn: 'Chat',
-      pttLabel: 'MAINTENIR POUR PARLER', chatTitle: "Chat de l'equipe", closeBtn: 'Fermer',
-      chatPlaceholder: 'Ecris un message...', sendBtn: 'Envoyer', you: 'toi', meSuffix: ' (toi)',
-      notConnected: 'Non connecte - message non envoye',
-      micUnavailable: 'Microphone indisponible dans ce navigateur', micError: 'Microphone : {err}',
-      geoUnavailable: 'Geolocalisation indisponible dans ce navigateur', geoError: 'Position : {err}',
-      proximity: '! {name} est a {dist} m de toi', speaking: '[AUDIO] {name} parle'
-    },
-    es: {
-      title: 'Unirse al equipo', nameLabel: 'Tu nombre', namePlaceholder: 'ej. Falcon',
-      roomLabel: 'Codigo de sala', roomPlaceholder: 'ej. VIAJE-2026', joinBtn: 'Entrar',
-      joinError: 'Introduce tu nombre y el codigo de sala.', roomPrefix: 'SALA', chatBtn: 'Chat',
-      pttLabel: 'MANTEN PARA HABLAR', chatTitle: 'Chat del equipo', closeBtn: 'Cerrar',
-      chatPlaceholder: 'Escribe un mensaje...', sendBtn: 'Enviar', you: 'tu', meSuffix: ' (tu)',
-      notConnected: 'No conectado - mensaje no enviado',
-      micUnavailable: 'Microfono no disponible en este navegador', micError: 'Microfono: {err}',
-      geoUnavailable: 'Geolocalizacion no disponible en este navegador', geoError: 'Ubicacion: {err}',
-      proximity: '! {name} esta a {dist} m de ti', speaking: '[AUDIO] {name} esta hablando'
-    }
-  };
-
-  function detectDefaultLang(){
-    const saved = localStorage.getItem('sq_lang');
-    if (saved && I18N[saved]) return saved;
-    const browserLang = (navigator.language || 'en').slice(0, 2);
-    return I18N[browserLang] ? browserLang : 'en';
-  }
-
-  let currentLang = detectDefaultLang();
-
-  function t(key, vars){
-    let str = (I18N[currentLang] && I18N[currentLang][key]) || I18N.en[key] || key;
-    if (vars){
-      for (const k in vars) str = str.replace('{' + k + '}', vars[k]);
-    }
-    return str;
-  }
-
-  function applyTranslations(){
-    document.getElementById('t-title').textContent = t('title');
-    document.getElementById('t-name-label').textContent = t('nameLabel');
-    document.getElementById('t-room-label').textContent = t('roomLabel');
-    document.getElementById('t-room-prefix').textContent = t('roomPrefix');
-    document.getElementById('t-chat-btn').textContent = t('chatBtn');
-    document.getElementById('t-chat-title').textContent = t('chatTitle');
-    document.getElementById('username').placeholder = t('namePlaceholder');
-    document.getElementById('room').placeholder = t('roomPlaceholder');
-    document.getElementById('join-btn').textContent = t('joinBtn');
-    document.getElementById('ptt-label').textContent = t('pttLabel');
-    document.getElementById('chat-close').textContent = t('closeBtn');
-    document.getElementById('chat-input').placeholder = t('chatPlaceholder');
-    document.getElementById('chat-send').textContent = t('sendBtn');
-    document.querySelectorAll('#lang-switch button').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.lang === currentLang);
-    });
-  }
-
-  document.querySelectorAll('#lang-switch button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      currentLang = btn.dataset.lang;
-      localStorage.setItem('sq_lang', currentLang);
-      applyTranslations();
-    });
-  });
-
-  applyTranslations();
-
-  const joinScreen = document.getElementById('join-screen');
-  const mapScreen = document.getElementById('map-screen');
-  const usernameInput = document.getElementById('username');
-  const roomInput = document.getElementById('room');
-  const joinBtn = document.getElementById('join-btn');
-  const joinError = document.getElementById('join-error');
-  const statusDot = document.getElementById('status-dot');
-  const roomLabel = document.getElementById('room-label');
-  const meLabel = document.getElementById('me-label');
-  const hudBottom = document.getElementById('hud-bottom');
-  const alertToast = document.getElementById('alert-toast');
-  const speakingIndicator = document.getElementById('speaking-indicator');
-  const pttBtn = document.getElementById('ptt-btn');
-  const chatToggle = document.getElementById('chat-toggle');
-  const chatPanel = document.getElementById('chat-panel');
-  const chatClose = document.getElementById('chat-close');
-  const chatMessages = document.getElementById('chat-messages');
-  const chatInput = document.getElementById('chat-input');
-  const chatSend = document.getElementById('chat-send');
-  const unreadDot = document.getElementById('unread-dot');
-
-  let ws = null;
-  let reconnectDelay = 1000;
-  let username = '';
-  let room = '';
-  let map = null;
-  let selfLatLng = null;
-  const markers = {};      // username -> L.marker
-  const lastKnown = {};    // username -> {lat,lng}
-  let watchId = null;
-  let hasUnread = false;
-
-  function wsUrl(){
-    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return proto + '//' + location.host + '/ws';
-  }
-
-  function haversine(lat1, lng1, lat2, lng2){
-    const R = 6371000;
-    const toRad = d => d * Math.PI / 180;
-    const dphi = toRad(lat2-lat1), dl = toRad(lng2-lng1);
-    const a = Math.sin(dphi/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dl/2)**2;
-    return 2 * R * Math.asin(Math.sqrt(a));
-  }
-
-  function showToast(text){
-    alertToast.textContent = text;
-    alertToast.classList.add('show');
-    clearTimeout(showToast._t);
-    showToast._t = setTimeout(()=>alertToast.classList.remove('show'), 3200);
-  }
-
-  function showSpeaking(name){
-    speakingIndicator.textContent = t('speaking', {name: name});
-    speakingIndicator.classList.add('show');
-    clearTimeout(showSpeaking._t);
-    showSpeaking._t = setTimeout(()=>speakingIndicator.classList.remove('show'), 2000);
-  }
-
-  function markerIcon(isMe){
-    return L.divIcon({
-      className: '',
-      html: '<div class="squad-marker' + (isMe?' me':'') + '"><div class="ring"></div><div class="dot"></div></div>',
-      iconSize: [16,16],
-      iconAnchor: [8,8]
-    });
-  }
-
-  function upsertMarker(name, lat, lng, isMe){
-    lastKnown[name] = {lat, lng};
-    if (markers[name]){
-      markers[name].setLatLng([lat, lng]);
-    } else {
-      markers[name] = L.marker([lat, lng], {icon: markerIcon(isMe)})
-        .bindTooltip(name, {permanent:true, direction:'top', offset:[0,-10], className:'marker-label'})
-        .addTo(map);
-    }
-  }
-
-  function removeStaleMarkers(activeNames){
-    for (const name in markers){
-      if (!activeNames.has(name)){
-        map.removeLayer(markers[name]);
-        delete markers[name];
-        delete lastKnown[name];
-      }
-    }
-  }
-
-  function renderHud(users){
-    hudBottom.innerHTML = '';
-    users.forEach(u => {
-      const chip = document.createElement('div');
-      const isMe = u.username === username;
-      chip.className = 'chip' + (isMe ? ' self' : '');
-      let distText = '-';
-      if (!isMe && selfLatLng && u.lat != null){
-        const d = haversine(selfLatLng.lat, selfLatLng.lng, u.lat, u.lng);
-        distText = d < 1000 ? Math.round(d) + ' m' : (d/1000).toFixed(1) + ' km';
-      }
-      chip.innerHTML = '<span class="name">' + (isMe ? u.username + t('meSuffix') : u.username) + '</span><span class="dist">' + distText + '</span>';
-      hudBottom.appendChild(chip);
-    });
-  }
-
-  // ---------- CHAT ----------
-  function appendChatMessage(who, text, isSelf){
-    const div = document.createElement('div');
-    div.className = 'chat-msg' + (isSelf ? ' self' : '');
-    const whoEl = document.createElement('div');
-    whoEl.className = 'who';
-    whoEl.textContent = isSelf ? t('you') : who;
-    const bubble = document.createElement('div');
-    bubble.className = 'bubble';
-    bubble.textContent = text;
-    div.appendChild(whoEl);
-    div.appendChild(bubble);
-    chatMessages.appendChild(div);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-
-    if (!isSelf && !chatPanel.classList.contains('open')){
-      hasUnread = true;
-      unreadDot.classList.add('show');
-    }
-  }
-
-  function sendChat(){
-    const text = chatInput.value.trim();
-    if (!text || !ws || ws.readyState !== WebSocket.OPEN){
-      if (!ws || ws.readyState !== WebSocket.OPEN) showToast(t('notConnected'));
-      return;
-    }
-    ws.send(JSON.stringify({type:'chat', text}));
-    appendChatMessage(username, text, true); // show immediately, don't wait for server echo
-    chatInput.value = '';
-  }
-
-  chatToggle.addEventListener('click', () => {
-    chatPanel.classList.add('open');
-    hasUnread = false;
-    unreadDot.classList.remove('show');
-    chatInput.focus();
-  });
-  chatClose.addEventListener('click', () => chatPanel.classList.remove('open'));
-  chatSend.addEventListener('click', sendChat);
-  chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });
-
-  // ---------- WALKIE-TALKIE ----------
-  let micStream = null;
-  let mediaRecorder = null;
-  let recordedChunks = [];
-  let isRecording = false;
-
-  async function ensureMic(){
-    if (micStream) return micStream;
-    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    return micStream;
-  }
-
-  function pickMimeType(){
-    const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/ogg'];
-    for (const c of candidates){
-      if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(c)) return c;
-    }
-    return '';
-  }
-
-  function blobToBase64(blob){
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result.split(',')[1]);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  }
-
-  async function startRecording(){
-    if (isRecording) return;
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-      showToast(t('micUnavailable'));
-      return;
-    }
-    try {
-      const stream = await ensureMic();
-      recordedChunks = [];
-      const mimeType = pickMimeType();
-      mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-      mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) recordedChunks.push(e.data); };
-      mediaRecorder.start();
-      isRecording = true;
-      pttBtn.classList.add('recording');
-    } catch (err){
-      showToast(t('micError', {err: err.message}));
-    }
-  }
-
-  function stopRecording(){
-    if (!isRecording || !mediaRecorder) return;
-    isRecording = false;
-    pttBtn.classList.remove('recording');
-    const finish = () => {
-      const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
-      recordedChunks = [];
-      if (blob.size < 400) return; // too short / accidental tap
-      blobToBase64(blob).then((b64) => {
-        if (ws && ws.readyState === WebSocket.OPEN){
-          ws.send(JSON.stringify({ type:'voice', audio:b64, mime: blob.type || 'audio/webm' }));
+    
+    <script>
+        let publicUrl = '';
+        
+        fetch('/url')
+            .then(r => r.json())
+            .then(data => {
+                publicUrl = data.url;
+                document.getElementById('publicUrl').innerHTML = publicUrl;
+            });
+        
+        function selectPage(page) {
+            if (publicUrl) {
+                window.open(publicUrl + '/' + page, '_blank');
+            } else {
+                alert('Loading URL, please wait...');
+            }
         }
-      });
-    };
-    mediaRecorder.onstop = finish;
-    if (mediaRecorder.state !== 'inactive') mediaRecorder.stop();
-  }
-
-  pttBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startRecording(); }, { passive:false });
-  pttBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopRecording(); }, { passive:false });
-  pttBtn.addEventListener('touchcancel', (e) => { e.preventDefault(); stopRecording(); }, { passive:false });
-  pttBtn.addEventListener('mousedown', startRecording);
-  pttBtn.addEventListener('mouseup', stopRecording);
-  pttBtn.addEventListener('mouseleave', () => { if (isRecording) stopRecording(); });
-
-  let voiceQueue = [];
-  let voicePlaying = false;
-  function enqueueVoice(who, audioB64, mime){
-    voiceQueue.push({who, audioB64, mime});
-    if (!voicePlaying) playNextVoice();
-  }
-  function playNextVoice(){
-    if (voiceQueue.length === 0){ voicePlaying = false; return; }
-    voicePlaying = true;
-    const {who, audioB64, mime} = voiceQueue.shift();
-    let bytes;
-    try {
-      const byteChars = atob(audioB64);
-      bytes = new Uint8Array(byteChars.length);
-      for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
-    } catch(e){ playNextVoice(); return; }
-    const blob = new Blob([bytes], { type: mime || 'audio/webm' });
-    const url = URL.createObjectURL(blob);
-    const audioEl = new Audio(url);
-    showSpeaking(who);
-    audioEl.onended = () => { URL.revokeObjectURL(url); playNextVoice(); };
-    audioEl.onerror = () => { URL.revokeObjectURL(url); playNextVoice(); };
-    audioEl.play().catch(() => { URL.revokeObjectURL(url); playNextVoice(); });
-  }
-
-  function connect(){
-    ws = new WebSocket(wsUrl());
-
-    ws.onopen = () => {
-      reconnectDelay = 1000;
-      statusDot.classList.remove('offline','pulse');
-      ws.send(JSON.stringify({type:'join', username, room}));
-    };
-
-    ws.onmessage = (evt) => {
-      let msg;
-      try { msg = JSON.parse(evt.data); } catch(e){ return; }
-
-      if (msg.type === 'joined'){
-        startGeolocation();
-      } else if (msg.type === 'presence'){
-        const activeNames = new Set(msg.users.map(u => u.username));
-        msg.users.forEach(u => {
-          if (u.lat != null) upsertMarker(u.username, u.lat, u.lng, u.username === username);
-        });
-        removeStaleMarkers(activeNames);
-        renderHud(msg.users);
-      } else if (msg.type === 'proximity_alert'){
-        showToast(t('proximity', {name: msg.with, dist: Math.round(msg.distance_m)}));
-      } else if (msg.type === 'chat'){
-        appendChatMessage(msg.username, msg.text, msg.username === username);
-      } else if (msg.type === 'voice'){
-        enqueueVoice(msg.username, msg.audio, msg.mime);
-      }
-    };
-
-    ws.onclose = () => {
-      statusDot.classList.add('offline','pulse');
-      setTimeout(connect, reconnectDelay);
-      reconnectDelay = Math.min(reconnectDelay * 1.8, 20000);
-    };
-
-    ws.onerror = () => { ws.close(); };
-  }
-
-  function startGeolocation(){
-    if (watchId !== null) return;
-    if (!navigator.geolocation){
-      showToast(t('geoUnavailable'));
-      return;
-    }
-    watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        const {latitude, longitude} = pos.coords;
-        selfLatLng = {lat:latitude, lng:longitude};
-        if (map._initialCentered !== true){
-          map.setView([latitude, longitude], 16);
-          map._initialCentered = true;
-        }
-        if (ws && ws.readyState === WebSocket.OPEN){
-          ws.send(JSON.stringify({type:'location', lat:latitude, lng:longitude}));
-        }
-      },
-      (err) => { showToast(t('geoError', {err: err.message})); },
-      { enableHighAccuracy:true, maximumAge:2000, timeout:15000 }
-    );
-  }
-
-  function initMap(){
-    map = L.map('map', {zoomControl:false, attributionControl:false}).setView([49.47,17.11], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19}).addTo(map);
-  }
-
-  joinBtn.addEventListener('click', () => {
-    const u = usernameInput.value.trim();
-    const r = roomInput.value.trim();
-    if (!u || !r){
-      joinError.textContent = t('joinError');
-      return;
-    }
-    username = u; room = r;
-    joinError.textContent = '';
-    joinScreen.style.display = 'none';
-    mapScreen.style.display = 'flex';
-    roomLabel.textContent = room;
-    meLabel.textContent = username;
-    initMap();
-    connect();
-  });
-})();
-</script>
+    </script>
 </body>
 </html>

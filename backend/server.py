@@ -1,9 +1,14 @@
 """
 Squad Tracker - backend server
-aiohttp app: serví static frontend + WebSocket na jedné portu.
+aiohttp app: servi static frontend + WebSocket na jedne portu.
 Room management, presence broadcast, Haversine geofencing, SQLite history, heartbeat.
+
+Members are keyed by a unique per-connection id (not username), so two people
+picking the same display name can never overwrite each other's connection.
 """
 import asyncio
+import hashlib
+import itertools
 import json
 import math
 import os
@@ -24,26 +29,36 @@ HEARTBEAT_TIMEOUT = 40
 MAX_CHAT_CHARS = 500
 MAX_VOICE_B64_CHARS = 2_000_000  # ~1.5MB raw audio, generous for a short PTT clip
 
-# rooms[room_id] = { username: { "ws": WebSocketResponse, "lat": float, "lng": float,
-#                                 "last_location_ts": float, "last_seen": float } }
-rooms: dict[str, dict[str, dict]] = {}
+_id_counter = itertools.count(1)
+
+# rooms[room_id] = { member_id: { "ws": WebSocketResponse, "username": str, "lat": float,
+#                                  "lng": float, "last_location_ts": float, "last_seen": float } }
+rooms: dict[str, dict[int, dict]] = {}
+
+# room_passwords[room_id] = sha256 hex digest, or None if the room has no password.
+# Set by whoever creates the room (first joiner); cleared when the room becomes empty.
+room_passwords: dict[str, str | None] = {}
 
 
-async def broadcast_to_room(room_id, msg: dict, exclude: str | None = None):
+def _hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode("utf-8")).hexdigest()
+
+
+async def broadcast_to_room(room_id, msg: dict, exclude: int | None = None):
     room = rooms.get(room_id)
     if not room:
         return
     data = json.dumps(msg)
     dead = []
-    for uname, entry in room.items():
-        if uname == exclude:
+    for member_id, entry in room.items():
+        if member_id == exclude:
             continue
         try:
             await entry["ws"].send_str(data)
         except ConnectionResetError:
-            dead.append(uname)
-    for uname in dead:
-        room.pop(uname, None)
+            dead.append(member_id)
+    for member_id in dead:
+        room.pop(member_id, None)
 
 
 def init_db():
@@ -86,38 +101,38 @@ async def broadcast_presence(room_id):
     if not room:
         return
     users_payload = [
-        {"username": u, "lat": data["lat"], "lng": data["lng"]}
-        for u, data in room.items()
+        {"username": data["username"], "lat": data["lat"], "lng": data["lng"]}
+        for data in room.values()
         if data["lat"] is not None
     ]
     msg = json.dumps({"type": "presence", "users": users_payload})
     dead = []
-    for username, data in room.items():
+    for member_id, data in room.items():
         try:
             await data["ws"].send_str(msg)
         except ConnectionResetError:
-            dead.append(username)
-    for username in dead:
-        room.pop(username, None)
+            dead.append(member_id)
+    for member_id in dead:
+        room.pop(member_id, None)
 
 
-async def check_geofence(room_id, moved_user):
+async def check_geofence(room_id, moved_id):
     room = rooms.get(room_id)
     if not room:
         return
-    moved = room.get(moved_user)
+    moved = room.get(moved_id)
     if not moved or moved["lat"] is None:
         return
-    for username, data in room.items():
-        if username == moved_user or data["lat"] is None:
+    for member_id, data in room.items():
+        if member_id == moved_id or data["lat"] is None:
             continue
         dist = haversine(moved["lat"], moved["lng"], data["lat"], data["lng"])
         if dist < GEOFENCE_METERS:
             alert = json.dumps(
-                {"type": "proximity_alert", "with": username, "distance_m": round(dist, 1)}
+                {"type": "proximity_alert", "with": data["username"], "distance_m": round(dist, 1)}
             )
             other_alert = json.dumps(
-                {"type": "proximity_alert", "with": moved_user, "distance_m": round(dist, 1)}
+                {"type": "proximity_alert", "with": moved["username"], "distance_m": round(dist, 1)}
             )
             try:
                 await moved["ws"].send_str(alert)
@@ -131,7 +146,7 @@ async def websocket_handler(request):
     await ws.prepare(request)
 
     room_id = None
-    username = None
+    member_id = None
 
     try:
         async for msg in ws:
@@ -145,11 +160,29 @@ async def websocket_handler(request):
             mtype = data.get("type")
 
             if mtype == "join":
-                room_id = str(data.get("room", "default"))
-                username = str(data.get("username", "anon"))[:32]
+                candidate_room_id = str(data.get("room", "default"))
+                candidate_username = str(data.get("username", "anon"))[:32]
+                provided_password = str(data.get("password") or "")
+
+                room_is_new = candidate_room_id not in rooms
+                if room_is_new:
+                    # First person into a room decides whether it's private.
+                    room_passwords[candidate_room_id] = (
+                        _hash_password(provided_password) if provided_password else None
+                    )
+                else:
+                    required_hash = room_passwords.get(candidate_room_id)
+                    if required_hash and _hash_password(provided_password) != required_hash:
+                        await ws.send_str(json.dumps({"type": "join_error", "reason": "password"}))
+                        continue  # stay on join screen client-side, don't add as a member
+
+                room_id = candidate_room_id
+                username = candidate_username
+                member_id = next(_id_counter)
                 rooms.setdefault(room_id, {})
-                rooms[room_id][username] = {
+                rooms[room_id][member_id] = {
                     "ws": ws,
+                    "username": username,
                     "lat": None,
                     "lng": None,
                     "last_location_ts": 0,
@@ -158,9 +191,9 @@ async def websocket_handler(request):
                 await ws.send_str(json.dumps({"type": "joined", "room": room_id, "username": username}))
                 await broadcast_presence(room_id)
 
-            elif mtype == "location" and room_id and username:
+            elif mtype == "location" and room_id and member_id:
                 now = time.time()
-                entry = rooms.get(room_id, {}).get(username)
+                entry = rooms.get(room_id, {}).get(member_id)
                 if not entry:
                     continue
                 # rate limiting - ignore packets sent faster than the allowed interval
@@ -172,39 +205,46 @@ async def websocket_handler(request):
                 entry["lat"], entry["lng"] = lat, lng
                 entry["last_location_ts"] = now
                 entry["last_seen"] = now
-                save_history(room_id, username, lat, lng)
+                save_history(room_id, entry["username"], lat, lng)
                 await broadcast_presence(room_id)
-                await check_geofence(room_id, username)
+                await check_geofence(room_id, member_id)
 
             elif mtype == "ping":
                 await ws.send_str(json.dumps({"type": "pong"}))
 
-            elif mtype == "chat" and room_id and username:
+            elif mtype == "chat" and room_id and member_id:
+                entry = rooms.get(room_id, {}).get(member_id)
+                if not entry:
+                    continue
                 text = str(data.get("text", "")).strip()[:MAX_CHAT_CHARS]
                 if not text:
                     continue
                 await broadcast_to_room(
                     room_id,
-                    {"type": "chat", "username": username, "text": text, "ts": time.time()},
-                    exclude=username,
+                    {"type": "chat", "username": entry["username"], "text": text, "ts": time.time()},
+                    exclude=member_id,
                 )
 
-            elif mtype == "voice" and room_id and username:
+            elif mtype == "voice" and room_id and member_id:
+                entry = rooms.get(room_id, {}).get(member_id)
+                if not entry:
+                    continue
                 audio_b64 = data.get("audio")
                 mime = data.get("mime", "audio/webm")
                 if not audio_b64 or len(audio_b64) > MAX_VOICE_B64_CHARS:
                     continue
                 await broadcast_to_room(
                     room_id,
-                    {"type": "voice", "username": username, "audio": audio_b64, "mime": mime},
-                    exclude=username,
+                    {"type": "voice", "username": entry["username"], "audio": audio_b64, "mime": mime},
+                    exclude=member_id,
                 )
 
     finally:
-        if room_id and username and room_id in rooms:
-            rooms[room_id].pop(username, None)
+        if room_id and member_id and room_id in rooms:
+            rooms[room_id].pop(member_id, None)
             if not rooms[room_id]:
                 rooms.pop(room_id, None)
+                room_passwords.pop(room_id, None)
             else:
                 await broadcast_presence(room_id)
 
@@ -218,11 +258,12 @@ async def stale_connection_reaper(app):
         await asyncio.sleep(HEARTBEAT_INTERVAL)
         now = time.time()
         for room_id in list(rooms.keys()):
-            for username in list(rooms[room_id].keys()):
-                if now - rooms[room_id][username]["last_seen"] > HEARTBEAT_TIMEOUT:
-                    rooms[room_id].pop(username, None)
+            for member_id in list(rooms[room_id].keys()):
+                if now - rooms[room_id][member_id]["last_seen"] > HEARTBEAT_TIMEOUT:
+                    rooms[room_id].pop(member_id, None)
             if not rooms[room_id]:
                 rooms.pop(room_id, None)
+                room_passwords.pop(room_id, None)
             else:
                 await broadcast_presence(room_id)
 
