@@ -576,15 +576,16 @@
   chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });
 
   // ---------- WALKIE-TALKIE ----------
-  let micStream = null;
+  let activeStream = null;
   let mediaRecorder = null;
   let recordedChunks = [];
   let isRecording = false;
 
-  async function ensureMic(){
-    if (micStream) return micStream;
-    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    return micStream;
+  function releaseStream(){
+    if (activeStream){
+      activeStream.getTracks().forEach(tr => tr.stop());
+      activeStream = null;
+    }
   }
 
   function pickMimeType(){
@@ -611,7 +612,12 @@
       return;
     }
     try {
-      const stream = await ensureMic();
+      // Request a FRESH stream every time instead of reusing a cached one.
+      // Android WebView can leave a previously-granted stream in a broken
+      // state after it has been idle, which is what causes
+      // "Could not start audio source" even though permission is granted.
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      activeStream = stream;
       recordedChunks = [];
       const mimeType = pickMimeType();
       mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
@@ -619,6 +625,7 @@
       mediaRecorder.onerror = (e) => {
         isRecording = false;
         pttBtn.classList.remove('recording');
+        releaseStream();
         const msg = (e.error && e.error.message) ? e.error.message : 'recording failed';
         showToast(t('micError', {err: msg}));
       };
@@ -626,6 +633,7 @@
       isRecording = true;
       pttBtn.classList.add('recording');
     } catch (err){
+      releaseStream();
       showToast(t('micError', {err: err.message}));
     }
   }
@@ -637,6 +645,7 @@
     const finish = () => {
       const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
       recordedChunks = [];
+      releaseStream();
       if (blob.size < 400) return; // too short / accidental tap
       blobToBase64(blob).then((b64) => {
         if (ws && ws.readyState === WebSocket.OPEN){
