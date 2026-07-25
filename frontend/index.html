@@ -4,6 +4,10 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>Squad Tracker</title>
+<link rel="manifest" href="/manifest.json" />
+<link rel="icon" href="/icons/icon-192.png" />
+<link rel="apple-touch-icon" href="/icons/icon-192.png" />
+<meta name="theme-color" content="#0a0d0c" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
   @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
@@ -217,6 +221,54 @@
   #chat-input-row{ display:flex; gap:8px; padding:12px 16px; border-top:1px solid var(--line); }
   #chat-input-row input{ flex:1; margin:0; }
   #chat-send{ width:auto; margin:0; padding:11px 18px; }
+
+  /* ---------- QUICK REACTIONS ---------- */
+  #quick-reactions{ display:flex; gap:6px; padding:0 16px 10px; flex-wrap:wrap; }
+  .quick-btn{
+    width:auto; margin:0; padding:6px 10px; font-size:11px; background:var(--panel-2);
+    border:1px solid var(--line); color:var(--text-dim); font-family:var(--mono);
+    text-transform:none; letter-spacing:0; border-radius:3px;
+  }
+  .quick-btn:active{ border-color:var(--signal); color:var(--signal); }
+
+  /* ---------- HUD chip extras: battery + staleness ---------- */
+  .chip.stale{ opacity:0.5; }
+  .chip .meta-row{ display:flex; align-items:center; gap:6px; margin-top:2px; }
+  .chip .battery{ color:var(--text-dim); font-size:10px; }
+  .chip .age{ color:var(--text-dim); font-size:10px; }
+  .chip .nav-link{
+    display:inline-block; margin-top:4px; color:var(--cyan); font-size:10px;
+    text-decoration:none; border:1px solid var(--cyan); border-radius:2px; padding:2px 6px;
+  }
+
+  /* ---------- MEET-HERE PIN ---------- */
+  #pin-btn{
+    position:absolute; left:16px; bottom:96px; z-index:1000;
+    width:52px; height:52px; margin:0; border-radius:50%;
+    background:var(--panel-2); border:2px solid var(--cyan); color:var(--cyan);
+    font-size:20px; display:flex; align-items:center; justify-content:center; padding:0;
+  }
+  .pin-popup{ font-family:var(--mono); font-size:12px; color:var(--text); }
+  .pin-popup a{ color:var(--cyan); text-decoration:none; }
+  .pin-popup .pin-clear{ color:var(--danger); margin-left:8px; cursor:pointer; }
+
+  /* ---------- TOPBAR extra icon buttons ---------- */
+  #mute-toggle.muted{ color:var(--danger); border-color:var(--danger); }
+
+  /* ---------- SHARE PANEL ---------- */
+  #share-panel{
+    position:absolute; inset:0; z-index:1200; background:rgba(8,11,10,0.97);
+    display:none; flex-direction:column; align-items:center; padding:60px 24px; text-align:center;
+  }
+  #share-panel.open{ display:flex; }
+  #share-panel img{ width:200px; height:200px; border-radius:6px; border:1px solid var(--line); margin:20px 0; background:#fff; }
+  #share-link{
+    width:100%; max-width:320px; background:var(--panel-2); border:1px solid var(--line); color:var(--text);
+    font-family:var(--mono); font-size:12px; padding:10px; border-radius:3px; text-align:center; word-break:break-all;
+  }
+  #share-panel .row{ display:flex; gap:8px; margin-top:14px; width:100%; max-width:320px; }
+  #share-panel button{ margin:0; }
+  #share-close{ position:absolute; top:14px; right:14px; width:auto; background:transparent; border:1px solid var(--line); padding:6px 12px; font-size:12px; }
 </style>
 </head>
 <body>
@@ -257,6 +309,8 @@
       <span class="room-tag"><span id="status-dot"></span><span id="t-room-prefix">ROOM</span> <b id="room-label"></b></span>
       <div class="topbar-right">
         <span class="room-tag" id="me-label"></span>
+        <button class="icon-btn" id="mute-toggle"><span id="t-mute-btn">Mute</span></button>
+        <button class="icon-btn" id="share-toggle"><span id="t-share-btn">Share</span></button>
         <button class="icon-btn" id="chat-toggle"><span id="t-chat-btn">Chat</span><span class="unread-dot" id="unread-dot"></span></button>
       </div>
     </div>
@@ -265,6 +319,7 @@
     <div id="speaking-indicator"></div>
     <p id="ptt-label">DRŽ A MLUV</p>
     <button id="ptt-btn">PTT</button>
+    <button id="pin-btn" title="Sraz tady">PIN</button>
     <div id="hud-bottom"></div>
 
     <!-- CHAT PANEL -->
@@ -274,10 +329,27 @@
         <button id="chat-close">Zavřít</button>
       </div>
       <div id="chat-messages"></div>
+      <div id="quick-reactions">
+        <button class="quick-btn" id="qr-1"></button>
+        <button class="quick-btn" id="qr-2"></button>
+        <button class="quick-btn" id="qr-3"></button>
+      </div>
       <div id="chat-input-row">
         <input id="chat-input" maxlength="500" placeholder="Napis zpravu..." autocomplete="off" />
         <button id="chat-send">Odeslat</button>
       </div>
+    </div>
+  </div>
+
+  <!-- SHARE PANEL -->
+  <div id="share-panel">
+    <button id="share-close">X</button>
+    <p class="eyebrow" id="t-share-title">Pozvi do jednotky</p>
+    <img id="share-qr" src="" alt="QR" />
+    <div id="share-link"></div>
+    <div class="row">
+      <button id="share-copy" style="margin:0;"></button>
+      <button id="share-native" style="margin:0; display:none;"></button>
     </div>
   </div>
 
@@ -301,7 +373,11 @@
       proximity: '! {name} je {dist} m od tebe', speaking: '[AUDIO] {name} mluví',
       passwordLabel: 'Heslo (jen pro soukromou mistnost)', passwordPlaceholder: 'volitelne',
       consentLabel: 'Souhlasim se sdilenim polohy, chatu a hlasu s ostatnimi v teto mistnosti.',
-      consentRequired: 'Pro pokracovani musis souhlasit s podminkami.', wrongPassword: 'Spatne heslo mistnosti.'
+      consentRequired: 'Pro pokracovani musis souhlasit s podminkami.', wrongPassword: 'Spatne heslo mistnosti.',
+      muteBtn: 'Ztlumit', muteBtnOn: 'Ztlumeno', shareBtn: 'Sdilet',
+      shareTitle: 'Pozvi do jednotky', shareCopy: 'Kopirovat odkaz', shareCopied: 'Zkopirovano!', shareNative: 'Sdilet odkaz',
+      pinBtnTitle: 'Sraz tady', pinSet: 'Bod srazu nastaven', pinCleared: 'Bod srazu zrusen', pinPopup: 'Sraz ({by})', navigate: 'Naviguj', clearPin: 'Zrusit',
+      react1: 'Jdu tam', react2: 'Dorazil jsem', react3: 'Za 5 min'
     },
     en: {
       title: 'Join the squad', nameLabel: 'Your name', namePlaceholder: 'e.g. Falcon',
@@ -315,7 +391,11 @@
       proximity: '! {name} is {dist} m from you', speaking: '[AUDIO] {name} is talking',
       passwordLabel: 'Password (for private rooms only)', passwordPlaceholder: 'optional',
       consentLabel: 'I agree to share my location, chat and voice with others in this room.',
-      consentRequired: 'You must agree to continue.', wrongPassword: 'Incorrect room password.'
+      consentRequired: 'You must agree to continue.', wrongPassword: 'Incorrect room password.',
+      muteBtn: 'Mute', muteBtnOn: 'Muted', shareBtn: 'Share',
+      shareTitle: 'Invite to the squad', shareCopy: 'Copy link', shareCopied: 'Copied!', shareNative: 'Share link',
+      pinBtnTitle: 'Meet here', pinSet: 'Meeting point set', pinCleared: 'Meeting point cleared', pinPopup: 'Meet here ({by})', navigate: 'Navigate', clearPin: 'Clear',
+      react1: 'On my way', react2: "I'm here", react3: '5 min away'
     },
     fr: {
       title: "Rejoindre l'equipe", nameLabel: 'Ton nom', namePlaceholder: 'ex. Falcon',
@@ -329,7 +409,11 @@
       proximity: '! {name} est a {dist} m de toi', speaking: '[AUDIO] {name} parle',
       passwordLabel: 'Mot de passe (salles privees uniquement)', passwordPlaceholder: 'optionnel',
       consentLabel: "J'accepte de partager ma position, mon chat et ma voix avec les autres dans cette salle.",
-      consentRequired: 'Tu dois accepter pour continuer.', wrongPassword: 'Mot de passe de la salle incorrect.'
+      consentRequired: 'Tu dois accepter pour continuer.', wrongPassword: 'Mot de passe de la salle incorrect.',
+      muteBtn: 'Muet', muteBtnOn: 'Coupe', shareBtn: 'Partager',
+      shareTitle: "Inviter l'equipe", shareCopy: 'Copier le lien', shareCopied: 'Copie !', shareNative: 'Partager le lien',
+      pinBtnTitle: 'Point de rdv', pinSet: 'Point de rdv defini', pinCleared: 'Point de rdv efface', pinPopup: 'Rdv ici ({by})', navigate: 'Naviguer', clearPin: 'Effacer',
+      react1: "J'arrive", react2: 'Je suis la', react3: 'Dans 5 min'
     },
     es: {
       title: 'Unirse al equipo', nameLabel: 'Tu nombre', namePlaceholder: 'ej. Falcon',
@@ -343,7 +427,11 @@
       proximity: '! {name} esta a {dist} m de ti', speaking: '[AUDIO] {name} esta hablando',
       passwordLabel: 'Contrasena (solo salas privadas)', passwordPlaceholder: 'opcional',
       consentLabel: 'Acepto compartir mi ubicacion, chat y voz con otros en esta sala.',
-      consentRequired: 'Debes aceptar para continuar.', wrongPassword: 'Contrasena de sala incorrecta.'
+      consentRequired: 'Debes aceptar para continuar.', wrongPassword: 'Contrasena de sala incorrecta.',
+      muteBtn: 'Silenciar', muteBtnOn: 'Silenciado', shareBtn: 'Compartir',
+      shareTitle: 'Invitar al equipo', shareCopy: 'Copiar enlace', shareCopied: 'Copiado!', shareNative: 'Compartir enlace',
+      pinBtnTitle: 'Punto de encuentro', pinSet: 'Punto de encuentro fijado', pinCleared: 'Punto de encuentro borrado', pinPopup: 'Encuentro ({by})', navigate: 'Navegar', clearPin: 'Borrar',
+      react1: 'Voy para alla', react2: 'Ya llegue', react3: 'En 5 min'
     },
     ar: {
       title: 'انضم إلى الفريق', nameLabel: 'اسمك', namePlaceholder: 'مثال: Falcon',
@@ -357,7 +445,11 @@
       proximity: '! {name} على بعد {dist} م منك', speaking: '[صوت] {name} يتحدث',
       passwordLabel: 'كلمة المرور (للغرف الخاصة فقط)', passwordPlaceholder: 'اختياري',
       consentLabel: 'أوافق على مشاركة موقعي والمحادثة والصوت مع الآخرين في هذه الغرفة.',
-      consentRequired: 'يجب الموافقة للمتابعة.', wrongPassword: 'كلمة مرور الغرفة غير صحيحة.'
+      consentRequired: 'يجب الموافقة للمتابعة.', wrongPassword: 'كلمة مرور الغرفة غير صحيحة.',
+      muteBtn: 'كتم', muteBtnOn: 'مكتوم', shareBtn: 'مشاركة',
+      shareTitle: 'ادعُ الفريق', shareCopy: 'نسخ الرابط', shareCopied: 'تم النسخ!', shareNative: 'مشاركة الرابط',
+      pinBtnTitle: 'نقطة اللقاء', pinSet: 'تم تحديد نقطة اللقاء', pinCleared: 'تم إلغاء نقطة اللقاء', pinPopup: 'نقطة اللقاء ({by})', navigate: 'التنقل', clearPin: 'إلغاء',
+      react1: 'في الطريق', react2: 'وصلت', react3: 'بعد 5 دقائق'
     },
     hi: {
       title: 'दल में शामिल हों', nameLabel: 'आपका नाम', namePlaceholder: 'जैसे Falcon',
@@ -371,7 +463,11 @@
       proximity: '! {name} आपसे {dist} मी दूर है', speaking: '[ऑडियो] {name} बोल रहा है',
       passwordLabel: 'पासवर्ड (केवल निजी रूम के लिए)', passwordPlaceholder: 'वैकल्पिक',
       consentLabel: 'मैं इस रूम में दूसरों के साथ अपनी लोकेशन, चैट और आवाज़ साझा करने के लिए सहमत हूं।',
-      consentRequired: 'जारी रखने के लिए सहमति देना आवश्यक है।', wrongPassword: 'गलत रूम पासवर्ड।'
+      consentRequired: 'जारी रखने के लिए सहमति देना आवश्यक है।', wrongPassword: 'गलत रूम पासवर्ड।',
+      muteBtn: 'म्यूट', muteBtnOn: 'म्यूट किया', shareBtn: 'शेयर',
+      shareTitle: 'दल में आमंत्रित करें', shareCopy: 'लिंक कॉपी करें', shareCopied: 'कॉपी हो गया!', shareNative: 'लिंक शेयर करें',
+      pinBtnTitle: 'मिलने की जगह', pinSet: 'मिलने की जगह तय हुई', pinCleared: 'मिलने की जगह हटाई गई', pinPopup: 'यहां मिलें ({by})', navigate: 'नेविगेट करें', clearPin: 'हटाएं',
+      react1: 'आ रहा हूं', react2: 'पहुंच गया', react3: '5 मिनट में'
     }
   };
 
@@ -382,6 +478,7 @@
   }
 
   let currentLang = detectDefaultLang();
+  let muteBtnState = false;
 
   function t(key, vars){
     let str = (I18N[currentLang] && I18N[currentLang][key]) || I18N.en[key] || key;
@@ -397,6 +494,15 @@
     document.getElementById('t-password-label').textContent = t('passwordLabel');
     document.getElementById('t-consent-label').textContent = t('consentLabel');
     document.getElementById('room-password').placeholder = t('passwordPlaceholder');
+    document.getElementById('t-mute-btn').textContent = muteBtnState ? t('muteBtnOn') : t('muteBtn');
+    document.getElementById('t-share-btn').textContent = t('shareBtn');
+    document.getElementById('t-share-title').textContent = t('shareTitle');
+    shareCopyBtn.textContent = t('shareCopy');
+    shareNativeBtn.textContent = t('shareNative');
+    pinBtn.title = t('pinBtnTitle');
+    qr1.textContent = t('react1');
+    qr2.textContent = t('react2');
+    qr3.textContent = t('react3');
     document.getElementById('t-name-label').textContent = t('nameLabel');
     document.getElementById('t-room-label').textContent = t('roomLabel');
     document.getElementById('t-room-prefix').textContent = t('roomPrefix');
@@ -422,8 +528,6 @@
     });
   });
 
-  applyTranslations();
-
   const joinScreen = document.getElementById('join-screen');
   const mapScreen = document.getElementById('map-screen');
   const usernameInput = document.getElementById('username');
@@ -446,6 +550,20 @@
   const chatInput = document.getElementById('chat-input');
   const chatSend = document.getElementById('chat-send');
   const unreadDot = document.getElementById('unread-dot');
+  const muteToggle = document.getElementById('mute-toggle');
+  const shareToggle = document.getElementById('share-toggle');
+  const sharePanel = document.getElementById('share-panel');
+  const shareClose = document.getElementById('share-close');
+  const shareQr = document.getElementById('share-qr');
+  const shareLink = document.getElementById('share-link');
+  const shareCopyBtn = document.getElementById('share-copy');
+  const shareNativeBtn = document.getElementById('share-native');
+  const pinBtn = document.getElementById('pin-btn');
+  const qr1 = document.getElementById('qr-1');
+  const qr2 = document.getElementById('qr-2');
+  const qr3 = document.getElementById('qr-3');
+
+  applyTranslations();
 
   let ws = null;
   let reconnectDelay = 1000;
@@ -459,6 +577,36 @@
   const lastKnown = {};    // username -> {lat,lng}
   let watchId = null;
   let hasUnread = false;
+  let batteryLevel = null;
+  let voiceMuted = false;
+  let wakeLock = null;
+  let pinMarker = null;
+
+  // Prefill room code from a shared link like https://squad-tracker.site/?room=CODE
+  const urlParams = new URLSearchParams(location.search);
+  const prefilledRoom = urlParams.get('room');
+  if (prefilledRoom) roomInput.value = prefilledRoom;
+
+  // Battery level is included with location updates when available (Chrome/Android only).
+  if (navigator.getBattery){
+    navigator.getBattery().then((batt) => {
+      batteryLevel = Math.round(batt.level * 100);
+      batt.addEventListener('levelchange', () => { batteryLevel = Math.round(batt.level * 100); });
+    }).catch(() => {});
+  }
+
+  async function requestWakeLock(){
+    if ('wakeLock' in navigator){
+      try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) { /* ignore */ }
+    }
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && mapScreen.style.display !== 'none') requestWakeLock();
+  });
+
+  if ('serviceWorker' in navigator){
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
 
   function wsUrl(){
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -522,15 +670,32 @@
     users.forEach(u => {
       const chip = document.createElement('div');
       const isMe = u.username === username;
-      chip.className = 'chip' + (isMe ? ' self' : '');
+      const isStale = !isMe && u.age_s != null && u.age_s > 30;
+      chip.className = 'chip' + (isMe ? ' self' : '') + (isStale ? ' stale' : '');
       let distText = '-';
       if (!isMe && selfLatLng && u.lat != null){
         const d = haversine(selfLatLng.lat, selfLatLng.lng, u.lat, u.lng);
         distText = d < 1000 ? Math.round(d) + ' m' : (d/1000).toFixed(1) + ' km';
       }
-      chip.innerHTML = '<span class="name">' + (isMe ? u.username + t('meSuffix') : u.username) + '</span><span class="dist">' + distText + '</span>';
+      let metaHtml = '';
+      if (u.battery != null) metaHtml += '<span class="battery">BAT ' + u.battery + '%</span>';
+      if (isStale) metaHtml += '<span class="age">' + formatAge(u.age_s) + '</span>';
+      const navHtml = (!isMe && u.lat != null)
+        ? '<a class="nav-link" href="geo:' + u.lat + ',' + u.lng + '?q=' + u.lat + ',' + u.lng + '" target="_blank">' + t('navigate') + '</a>'
+        : '';
+      chip.innerHTML =
+        '<span class="name">' + (isMe ? u.username + t('meSuffix') : u.username) + '</span>' +
+        '<span class="dist">' + distText + '</span>' +
+        (metaHtml ? '<div class="meta-row">' + metaHtml + '</div>' : '') +
+        navHtml;
       hudBottom.appendChild(chip);
     });
+  }
+
+  function formatAge(ageSeconds){
+    if (ageSeconds < 60) return ageSeconds + 's';
+    const mins = Math.round(ageSeconds / 60);
+    return mins + 'm';
   }
 
   // ---------- CHAT ----------
@@ -581,6 +746,15 @@
   let recordedChunks = [];
   let isRecording = false;
 
+  // Inside the APK, Android WebView's own getUserMedia+MediaRecorder combo is
+  // unreliable ("Could not start audio source"). When running as a native app,
+  // use the native Capacitor plugin instead, which records via Android's own
+  // MediaRecorder API and bypasses the broken WebView audio path entirely.
+  // On the plain website this plugin isn't present, so it just falls back to
+  // the normal Web Audio path below, which already works fine there.
+  const isNativeApp = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  const NativeVoiceRecorder = (isNativeApp && window.Capacitor.Plugins) ? window.Capacitor.Plugins.VoiceRecorder : null;
+
   function releaseStream(){
     if (activeStream){
       activeStream.getTracks().forEach(tr => tr.stop());
@@ -607,6 +781,26 @@
 
   async function startRecording(){
     if (isRecording) return;
+
+    if (NativeVoiceRecorder){
+      try {
+        const hasPerm = await NativeVoiceRecorder.hasAudioRecordingPermission();
+        if (!hasPerm.value){
+          const req = await NativeVoiceRecorder.requestAudioRecordingPermission();
+          if (!req.value){
+            showToast(t('micUnavailable'));
+            return;
+          }
+        }
+        await NativeVoiceRecorder.startRecording();
+        isRecording = true;
+        pttBtn.classList.add('recording');
+      } catch (err){
+        showToast(t('micError', {err: (err && err.message) ? err.message : String(err)}));
+      }
+      return;
+    }
+
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
       showToast(t('micUnavailable'));
       return;
@@ -639,9 +833,28 @@
   }
 
   function stopRecording(){
-    if (!isRecording || !mediaRecorder) return;
+    if (!isRecording) return;
     isRecording = false;
     pttBtn.classList.remove('recording');
+
+    if (NativeVoiceRecorder){
+      NativeVoiceRecorder.stopRecording().then((result) => {
+        const data = result && result.value;
+        if (data && data.recordDataBase64 && data.recordDataBase64.length > 400 &&
+            ws && ws.readyState === WebSocket.OPEN){
+          ws.send(JSON.stringify({
+            type: 'voice',
+            audio: data.recordDataBase64,
+            mime: data.mimeType || 'audio/aac'
+          }));
+        }
+      }).catch((err) => {
+        showToast(t('micError', {err: (err && err.message) ? err.message : String(err)}));
+      });
+      return;
+    }
+
+    if (!mediaRecorder) return;
     const finish = () => {
       const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
       recordedChunks = [];
@@ -674,6 +887,8 @@
     if (voiceQueue.length === 0){ voicePlaying = false; return; }
     voicePlaying = true;
     const {who, audioB64, mime} = voiceQueue.shift();
+    showSpeaking(who);
+    if (voiceMuted){ playNextVoice(); return; }
     let bytes;
     try {
       const byteChars = atob(audioB64);
@@ -683,7 +898,6 @@
     const blob = new Blob([bytes], { type: mime || 'audio/webm' });
     const url = URL.createObjectURL(blob);
     const audioEl = new Audio(url);
-    showSpeaking(who);
     audioEl.onended = () => { URL.revokeObjectURL(url); playNextVoice(); };
     audioEl.onerror = () => { URL.revokeObjectURL(url); playNextVoice(); };
     audioEl.play().catch(() => { URL.revokeObjectURL(url); playNextVoice(); });
@@ -710,6 +924,7 @@
           roomLabel.textContent = room;
           meLabel.textContent = username;
           if (!map) initMap();
+          requestWakeLock();
         }
         startGeolocation();
       } else if (msg.type === 'join_error'){
@@ -726,10 +941,18 @@
         renderHud(msg.users);
       } else if (msg.type === 'proximity_alert'){
         showToast(t('proximity', {name: msg.with, dist: Math.round(msg.distance_m)}));
+        if (navigator.vibrate) navigator.vibrate(200);
       } else if (msg.type === 'chat'){
         appendChatMessage(msg.username, msg.text, msg.username === username);
+      } else if (msg.type === 'chat_history'){
+        msg.messages.forEach(m => appendChatMessage(m.username, m.text, m.username === username));
       } else if (msg.type === 'voice'){
         enqueueVoice(msg.username, msg.audio, msg.mime);
+        if (navigator.vibrate) navigator.vibrate(80);
+      } else if (msg.type === 'pin'){
+        setPinMarker(msg.lat, msg.lng, msg.by);
+      } else if (msg.type === 'pin_clear'){
+        clearPinMarker();
       }
     };
 
@@ -761,7 +984,9 @@
           map._initialCentered = true;
         }
         if (ws && ws.readyState === WebSocket.OPEN){
-          ws.send(JSON.stringify({type:'location', lat:latitude, lng:longitude}));
+          const payload = {type:'location', lat:latitude, lng:longitude};
+          if (batteryLevel != null) payload.battery = batteryLevel;
+          ws.send(JSON.stringify(payload));
         }
       },
       (err) => { showToast(t('geoError', {err: err.message})); },
@@ -773,6 +998,89 @@
     map = L.map('map', {zoomControl:false, attributionControl:false}).setView([49.47,17.11], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19}).addTo(map);
   }
+
+  // ---------- MEET-HERE PIN ----------
+  window.__clearPin = () => {
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({type:'pin_clear'}));
+  };
+
+  function setPinMarker(lat, lng, by){
+    if (!map) return;
+    if (pinMarker) map.removeLayer(pinMarker);
+    const icon = L.divIcon({
+      className: '',
+      html: '<div class="squad-marker"><div class="dot" style="background:var(--cyan)"></div></div>',
+      iconSize: [16,16],
+      iconAnchor: [8,8]
+    });
+    const popupHtml = '<div class="pin-popup">' + t('pinPopup', {by: by}) +
+      '<br/><a href="geo:' + lat + ',' + lng + '?q=' + lat + ',' + lng + '" target="_blank">' + t('navigate') + '</a>' +
+      '<span class="pin-clear" onclick="window.__clearPin()">' + t('clearPin') + '</span></div>';
+    pinMarker = L.marker([lat, lng], {icon}).bindPopup(popupHtml).addTo(map);
+    showToast(t('pinSet'));
+  }
+
+  function clearPinMarker(){
+    if (pinMarker && map){
+      map.removeLayer(pinMarker);
+      pinMarker = null;
+      showToast(t('pinCleared'));
+    }
+  }
+
+  pinBtn.addEventListener('click', () => {
+    if (!selfLatLng){
+      showToast(t('geoUnavailable'));
+      return;
+    }
+    if (ws && ws.readyState === WebSocket.OPEN){
+      ws.send(JSON.stringify({type:'pin', lat: selfLatLng.lat, lng: selfLatLng.lng}));
+    }
+  });
+
+  // ---------- MUTE TOGGLE ----------
+  muteToggle.addEventListener('click', () => {
+    voiceMuted = !voiceMuted;
+    muteBtnState = voiceMuted;
+    muteToggle.classList.toggle('muted', voiceMuted);
+    document.getElementById('t-mute-btn').textContent = voiceMuted ? t('muteBtnOn') : t('muteBtn');
+  });
+
+  // ---------- QUICK REACTIONS ----------
+  function sendQuickReaction(key){
+    const text = t(key);
+    if (!ws || ws.readyState !== WebSocket.OPEN){
+      showToast(t('notConnected'));
+      return;
+    }
+    ws.send(JSON.stringify({type:'chat', text}));
+    appendChatMessage(username, text, true);
+  }
+  qr1.addEventListener('click', () => sendQuickReaction('react1'));
+  qr2.addEventListener('click', () => sendQuickReaction('react2'));
+  qr3.addEventListener('click', () => sendQuickReaction('react3'));
+
+  // ---------- SHARE PANEL ----------
+  shareToggle.addEventListener('click', () => {
+    const url = location.origin + location.pathname + '?room=' + encodeURIComponent(room);
+    shareLink.textContent = url;
+    shareQr.src = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(url);
+    if (navigator.share){
+      shareNativeBtn.style.display = 'block';
+    }
+    sharePanel.classList.add('open');
+  });
+  shareClose.addEventListener('click', () => sharePanel.classList.remove('open'));
+  shareCopyBtn.addEventListener('click', () => {
+    navigator.clipboard.writeText(shareLink.textContent).then(() => {
+      showToast(t('shareCopied'));
+    }).catch(() => {});
+  });
+  shareNativeBtn.addEventListener('click', () => {
+    if (navigator.share){
+      navigator.share({ title: 'Squad Tracker', url: shareLink.textContent }).catch(() => {});
+    }
+  });
 
   joinBtn.addEventListener('click', () => {
     const u = usernameInput.value.trim();

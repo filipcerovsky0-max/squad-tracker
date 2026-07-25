@@ -39,6 +39,21 @@ rooms: dict[str, dict[int, dict]] = {}
 # Set by whoever creates the room (first joiner); cleared when the room becomes empty.
 room_passwords: dict[str, str | None] = {}
 
+# room_chat_history[room_id] = list of the last MAX_CHAT_HISTORY chat messages,
+# sent to new joiners so the chat isn't empty when they arrive.
+room_chat_history: dict[str, list[dict]] = {}
+MAX_CHAT_HISTORY = 50
+
+# room_pins[room_id] = {"lat","lng","by","ts"} or None. A single shared
+# "meet here" marker per room, visible to everyone including new joiners.
+room_pins: dict[str, dict | None] = {}
+
+
+def _clear_room_state(room_id: str):
+    room_passwords.pop(room_id, None)
+    room_chat_history.pop(room_id, None)
+    room_pins.pop(room_id, None)
+
 
 def _hash_password(password: str) -> str:
     return hashlib.sha256(password.encode("utf-8")).hexdigest()
@@ -100,8 +115,15 @@ async def broadcast_presence(room_id):
     room = rooms.get(room_id)
     if not room:
         return
+    now = time.time()
     users_payload = [
-        {"username": data["username"], "lat": data["lat"], "lng": data["lng"]}
+        {
+            "username": data["username"],
+            "lat": data["lat"],
+            "lng": data["lng"],
+            "battery": data.get("battery"),
+            "age_s": round(now - data["last_location_ts"]) if data["last_location_ts"] else None,
+        }
         for data in room.values()
         if data["lat"] is not None
     ]
@@ -189,6 +211,10 @@ async def websocket_handler(request):
                     "last_seen": time.time(),
                 }
                 await ws.send_str(json.dumps({"type": "joined", "room": room_id, "username": username}))
+                if room_chat_history.get(room_id):
+                    await ws.send_str(json.dumps({"type": "chat_history", "messages": room_chat_history[room_id]}))
+                if room_pins.get(room_id):
+                    await ws.send_str(json.dumps({"type": "pin", **room_pins[room_id]}))
                 await broadcast_presence(room_id)
 
             elif mtype == "location" and room_id and member_id:
@@ -203,6 +229,9 @@ async def websocket_handler(request):
                 if lat is None or lng is None:
                     continue
                 entry["lat"], entry["lng"] = lat, lng
+                battery = data.get("battery")
+                if isinstance(battery, (int, float)):
+                    entry["battery"] = max(0, min(100, round(battery)))
                 entry["last_location_ts"] = now
                 entry["last_seen"] = now
                 save_history(room_id, entry["username"], lat, lng)
@@ -219,11 +248,27 @@ async def websocket_handler(request):
                 text = str(data.get("text", "")).strip()[:MAX_CHAT_CHARS]
                 if not text:
                     continue
-                await broadcast_to_room(
-                    room_id,
-                    {"type": "chat", "username": entry["username"], "text": text, "ts": time.time()},
-                    exclude=member_id,
-                )
+                chat_msg = {"type": "chat", "username": entry["username"], "text": text, "ts": time.time()}
+                history = room_chat_history.setdefault(room_id, [])
+                history.append(chat_msg)
+                if len(history) > MAX_CHAT_HISTORY:
+                    del history[: len(history) - MAX_CHAT_HISTORY]
+                await broadcast_to_room(room_id, chat_msg, exclude=member_id)
+
+            elif mtype == "pin" and room_id and member_id:
+                entry = rooms.get(room_id, {}).get(member_id)
+                if not entry:
+                    continue
+                lat, lng = data.get("lat"), data.get("lng")
+                if lat is None or lng is None:
+                    continue
+                pin = {"lat": lat, "lng": lng, "by": entry["username"], "ts": time.time()}
+                room_pins[room_id] = pin
+                await broadcast_to_room(room_id, {"type": "pin", **pin})
+
+            elif mtype == "pin_clear" and room_id and member_id:
+                room_pins[room_id] = None
+                await broadcast_to_room(room_id, {"type": "pin_clear"})
 
             elif mtype == "voice" and room_id and member_id:
                 entry = rooms.get(room_id, {}).get(member_id)
@@ -244,7 +289,7 @@ async def websocket_handler(request):
             rooms[room_id].pop(member_id, None)
             if not rooms[room_id]:
                 rooms.pop(room_id, None)
-                room_passwords.pop(room_id, None)
+                _clear_room_state(room_id)
             else:
                 await broadcast_presence(room_id)
 
@@ -263,7 +308,7 @@ async def stale_connection_reaper(app):
                     rooms[room_id].pop(member_id, None)
             if not rooms[room_id]:
                 rooms.pop(room_id, None)
-                room_passwords.pop(room_id, None)
+                _clear_room_state(room_id)
             else:
                 await broadcast_presence(room_id)
 
