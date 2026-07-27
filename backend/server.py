@@ -27,32 +27,46 @@ GEOFENCE_METERS = 50
 HEARTBEAT_INTERVAL = 15
 HEARTBEAT_TIMEOUT = 40
 MAX_CHAT_CHARS = 500
-MAX_VOICE_B64_CHARS = 2_000_000  # ~1.5MB raw audio, generous for a short PTT clip
+MAX_VOICE_B64_CHARS = 2_000_000   # ~1.5MB raw audio, generous for a short PTT clip
+MAX_IMAGE_B64_CHARS = 1_000_000   # ~750KB raw image, enough for a compressed photo
+MAX_REPLY_CHARS = 120
+TYPING_THROTTLE_SECONDS = 2
+MAX_SPEED_MPS = 15  # ~54 km/h; faster deltas are treated as GPS noise, not real movement
+ADMIN_KEY = os.environ.get("ADMIN_KEY", "")
 
 _id_counter = itertools.count(1)
 
-# rooms[room_id] = { member_id: { "ws": WebSocketResponse, "username": str, "lat": float,
-#                                  "lng": float, "last_location_ts": float, "last_seen": float } }
+# rooms[room_id] = { member_id: { "ws", "username", "lat", "lng", "battery", "color",
+#                                  "last_location_ts", "last_seen", "prev_lat", "prev_lng",
+#                                  "prev_ts", "speed_mps", "distance_m", "last_typing_ts" } }
 rooms: dict[str, dict[int, dict]] = {}
 
 # room_passwords[room_id] = sha256 hex digest, or None if the room has no password.
-# Set by whoever creates the room (first joiner); cleared when the room becomes empty.
 room_passwords: dict[str, str | None] = {}
 
-# room_chat_history[room_id] = list of the last MAX_CHAT_HISTORY chat messages,
-# sent to new joiners so the chat isn't empty when they arrive.
+# room_chat_history[room_id] = list of the last MAX_CHAT_HISTORY chat messages.
 room_chat_history: dict[str, list[dict]] = {}
 MAX_CHAT_HISTORY = 50
 
-# room_pins[room_id] = {"lat","lng","by","ts"} or None. A single shared
-# "meet here" marker per room, visible to everyone including new joiners.
+# room_pins[room_id] = {"lat","lng","by","ts"} or None.
 room_pins: dict[str, dict | None] = {}
+
+# room_owners[room_id] = member_id of whoever created the room (or the longest-present
+# remaining member if the original creator left). Owners can kick and change the password.
+room_owners: dict[str, int] = {}
+
+# room_msg_count[room_id] = total chat messages sent in this room's lifetime (session-scoped).
+room_msg_count: dict[str, int] = {}
+
+SERVER_START_TS = time.time()
 
 
 def _clear_room_state(room_id: str):
     room_passwords.pop(room_id, None)
     room_chat_history.pop(room_id, None)
     room_pins.pop(room_id, None)
+    room_owners.pop(room_id, None)
+    room_msg_count.pop(room_id, None)
 
 
 def _hash_password(password: str) -> str:
@@ -116,15 +130,20 @@ async def broadcast_presence(room_id):
     if not room:
         return
     now = time.time()
+    owner_id = room_owners.get(room_id)
     users_payload = [
         {
             "username": data["username"],
             "lat": data["lat"],
             "lng": data["lng"],
             "battery": data.get("battery"),
+            "color": data.get("color"),
             "age_s": round(now - data["last_location_ts"]) if data["last_location_ts"] else None,
+            "speed_mps": data.get("speed_mps"),
+            "distance_m": round(data.get("distance_m", 0)),
+            "is_owner": member_id == owner_id,
         }
-        for data in room.values()
+        for member_id, data in room.items()
         if data["lat"] is not None
     ]
     msg = json.dumps({"type": "presence", "users": users_payload})
@@ -163,6 +182,17 @@ async def check_geofence(room_id, moved_id):
                 pass
 
 
+def _promote_new_owner(room_id):
+    """If the room has no owner (creator left), hand ownership to whoever has
+    been present the longest among the remaining members."""
+    room = rooms.get(room_id)
+    if not room:
+        return
+    if room_owners.get(room_id) not in room:
+        first_member_id = next(iter(room))
+        room_owners[room_id] = first_member_id
+
+
 async def websocket_handler(request):
     ws = web.WebSocketResponse(heartbeat=HEARTBEAT_INTERVAL)
     await ws.prepare(request)
@@ -185,10 +215,12 @@ async def websocket_handler(request):
                 candidate_room_id = str(data.get("room", "default"))
                 candidate_username = str(data.get("username", "anon"))[:32]
                 provided_password = str(data.get("password") or "")
+                color = data.get("color")
+                if not isinstance(color, str) or not color.startswith("#") or len(color) not in (4, 7):
+                    color = None
 
                 room_is_new = candidate_room_id not in rooms
                 if room_is_new:
-                    # First person into a room decides whether it's private.
                     room_passwords[candidate_room_id] = (
                         _hash_password(provided_password) if provided_password else None
                     )
@@ -196,7 +228,7 @@ async def websocket_handler(request):
                     required_hash = room_passwords.get(candidate_room_id)
                     if required_hash and _hash_password(provided_password) != required_hash:
                         await ws.send_str(json.dumps({"type": "join_error", "reason": "password"}))
-                        continue  # stay on join screen client-side, don't add as a member
+                        continue
 
                 room_id = candidate_room_id
                 username = candidate_username
@@ -207,10 +239,26 @@ async def websocket_handler(request):
                     "username": username,
                     "lat": None,
                     "lng": None,
+                    "color": color,
                     "last_location_ts": 0,
                     "last_seen": time.time(),
+                    "prev_lat": None,
+                    "prev_lng": None,
+                    "prev_ts": None,
+                    "speed_mps": None,
+                    "distance_m": 0.0,
+                    "last_typing_ts": 0,
                 }
-                await ws.send_str(json.dumps({"type": "joined", "room": room_id, "username": username}))
+                if room_is_new:
+                    room_owners[room_id] = member_id
+                    room_msg_count[room_id] = 0
+                else:
+                    _promote_new_owner(room_id)
+
+                await ws.send_str(json.dumps({
+                    "type": "joined", "room": room_id, "username": username,
+                    "is_owner": room_owners.get(room_id) == member_id,
+                }))
                 if room_chat_history.get(room_id):
                     await ws.send_str(json.dumps({"type": "chat_history", "messages": room_chat_history[room_id]}))
                 if room_pins.get(room_id):
@@ -222,12 +270,23 @@ async def websocket_handler(request):
                 entry = rooms.get(room_id, {}).get(member_id)
                 if not entry:
                     continue
-                # rate limiting - ignore packets sent faster than the allowed interval
                 if now - entry["last_location_ts"] < RATE_LIMIT_SECONDS:
                     continue
                 lat, lng = data.get("lat"), data.get("lng")
                 if lat is None or lng is None:
                     continue
+
+                # speed (for ETA) + cumulative distance walked this session
+                if entry["prev_lat"] is not None and entry["prev_ts"]:
+                    dt = now - entry["prev_ts"]
+                    dist_delta = haversine(entry["prev_lat"], entry["prev_lng"], lat, lng)
+                    if dt >= 2:
+                        speed = dist_delta / dt
+                        entry["speed_mps"] = speed if speed <= MAX_SPEED_MPS else entry["speed_mps"]
+                    if dist_delta <= MAX_SPEED_MPS * max(dt, 1):  # discard GPS-jump noise
+                        entry["distance_m"] += dist_delta
+                entry["prev_lat"], entry["prev_lng"], entry["prev_ts"] = lat, lng, now
+
                 entry["lat"], entry["lng"] = lat, lng
                 battery = data.get("battery")
                 if isinstance(battery, (int, float)):
@@ -241,18 +300,44 @@ async def websocket_handler(request):
             elif mtype == "ping":
                 await ws.send_str(json.dumps({"type": "pong"}))
 
+            elif mtype == "typing" and room_id and member_id:
+                entry = rooms.get(room_id, {}).get(member_id)
+                if not entry:
+                    continue
+                now = time.time()
+                if now - entry["last_typing_ts"] < TYPING_THROTTLE_SECONDS:
+                    continue
+                entry["last_typing_ts"] = now
+                await broadcast_to_room(room_id, {"type": "typing", "username": entry["username"]}, exclude=member_id)
+
             elif mtype == "chat" and room_id and member_id:
                 entry = rooms.get(room_id, {}).get(member_id)
                 if not entry:
                     continue
                 text = str(data.get("text", "")).strip()[:MAX_CHAT_CHARS]
-                if not text:
+                image_b64 = data.get("image")
+                if image_b64 and len(image_b64) > MAX_IMAGE_B64_CHARS:
+                    image_b64 = None
+                if not text and not image_b64:
                     continue
-                chat_msg = {"type": "chat", "username": entry["username"], "text": text, "ts": time.time()}
+
+                chat_msg = {
+                    "type": "chat", "username": entry["username"], "text": text, "ts": time.time(),
+                }
+                if image_b64:
+                    chat_msg["image"] = image_b64
+                reply_to = data.get("reply_to")
+                if isinstance(reply_to, dict) and reply_to.get("username") and reply_to.get("text"):
+                    chat_msg["reply_to"] = {
+                        "username": str(reply_to["username"])[:32],
+                        "text": str(reply_to["text"])[:MAX_REPLY_CHARS],
+                    }
+
                 history = room_chat_history.setdefault(room_id, [])
                 history.append(chat_msg)
                 if len(history) > MAX_CHAT_HISTORY:
                     del history[: len(history) - MAX_CHAT_HISTORY]
+                room_msg_count[room_id] = room_msg_count.get(room_id, 0) + 1
                 await broadcast_to_room(room_id, chat_msg, exclude=member_id)
 
             elif mtype == "pin" and room_id and member_id:
@@ -284,6 +369,37 @@ async def websocket_handler(request):
                     exclude=member_id,
                 )
 
+            elif mtype == "kick" and room_id and member_id:
+                if room_owners.get(room_id) != member_id:
+                    continue
+                target_username = str(data.get("username", ""))
+                room = rooms.get(room_id, {})
+                targets = [mid for mid, e in room.items() if e["username"] == target_username and mid != member_id]
+                for target_id in targets:
+                    target_entry = room[target_id]
+                    try:
+                        await target_entry["ws"].send_str(json.dumps({"type": "kicked"}))
+                        await target_entry["ws"].close()
+                    except Exception:
+                        pass
+                    room.pop(target_id, None)
+                if targets:
+                    await broadcast_presence(room_id)
+
+            elif mtype == "change_password" and room_id and member_id:
+                if room_owners.get(room_id) != member_id:
+                    continue
+                new_password = str(data.get("password") or "")
+                room_passwords[room_id] = _hash_password(new_password) if new_password else None
+                await ws.send_str(json.dumps({"type": "password_changed"}))
+
+            elif mtype == "get_stats" and room_id and member_id:
+                await ws.send_str(json.dumps({
+                    "type": "room_stats",
+                    "message_count": room_msg_count.get(room_id, 0),
+                    "member_count": len(rooms.get(room_id, {})),
+                }))
+
     finally:
         if room_id and member_id and room_id in rooms:
             rooms[room_id].pop(member_id, None)
@@ -291,6 +407,7 @@ async def websocket_handler(request):
                 rooms.pop(room_id, None)
                 _clear_room_state(room_id)
             else:
+                _promote_new_owner(room_id)
                 await broadcast_presence(room_id)
 
     return ws
@@ -310,11 +427,24 @@ async def stale_connection_reaper(app):
                 rooms.pop(room_id, None)
                 _clear_room_state(room_id)
             else:
+                _promote_new_owner(room_id)
                 await broadcast_presence(room_id)
 
 
 async def health(request):
     return web.json_response({"status": "ok", "rooms": len(rooms)})
+
+
+async def admin_stats(request):
+    key = request.query.get("key", "")
+    if not ADMIN_KEY or key != ADMIN_KEY:
+        return web.json_response({"error": "forbidden"}, status=403)
+    total_members = sum(len(members) for members in rooms.values())
+    return web.json_response({
+        "rooms": len(rooms),
+        "members": total_members,
+        "uptime_s": round(time.time() - SERVER_START_TS),
+    })
 
 
 async def start_background_tasks(app):
@@ -333,6 +463,7 @@ def create_app():
     init_db()
     app = web.Application()
     app.router.add_get("/health", health)
+    app.router.add_get("/admin/stats", admin_stats)
     app.router.add_get("/ws", websocket_handler)
     app.router.add_get("/", index)
     app.router.add_static("/", FRONTEND_DIR, show_index=False)

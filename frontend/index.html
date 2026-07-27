@@ -279,6 +279,68 @@
   #share-panel .row{ display:flex; gap:8px; margin-top:14px; width:100%; max-width:320px; }
   #share-panel button{ margin:0; }
   #share-close{ position:absolute; top:14px; right:14px; width:auto; background:transparent; border:1px solid var(--line); padding:6px 12px; font-size:12px; }
+
+  /* ---------- avatar color + custom marker ---------- */
+  .color-row{ display:flex; align-items:center; gap:10px; margin-top:14px; }
+  .color-row input[type="color"]{
+    width:44px; height:36px; padding:2px; margin:0; background:var(--panel-2);
+    border:1px solid var(--line); border-radius:3px; cursor:pointer;
+  }
+  .color-row span{ font-family:var(--mono); font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.08em; }
+  .squad-marker .dot{ display:flex; align-items:center; justify-content:center; color:#0a0d0c; font-size:8px; font-weight:700; font-family:var(--mono); }
+
+  /* ---------- APK link on join screen ---------- */
+  #apk-link{
+    display:block; text-align:center; margin-top:16px; font-family:var(--mono); font-size:11px;
+    color:var(--text-dim); text-decoration:none; border:1px solid var(--line); border-radius:3px; padding:8px;
+  }
+  #apk-link:active{ border-color:var(--signal); color:var(--signal); }
+
+  /* ---------- typing indicator ---------- */
+  #typing-indicator{
+    font-family:var(--mono); font-size:11px; color:var(--text-dim); padding:0 16px 4px;
+    min-height:16px; font-style:italic;
+  }
+
+  /* ---------- reply preview ---------- */
+  #reply-preview{
+    display:none; align-items:center; justify-content:space-between; gap:8px;
+    margin:0 16px 8px; padding:6px 10px; background:var(--panel-2); border-left:2px solid var(--cyan);
+    font-family:var(--mono); font-size:11px; color:var(--text-dim); border-radius:2px;
+  }
+  #reply-preview.show{ display:flex; }
+  #reply-preview .txt{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #reply-preview .cancel{ cursor:pointer; color:var(--danger); flex-shrink:0; }
+  .chat-msg .reply-quote{
+    font-size:10px; color:var(--cyan); border-left:2px solid var(--cyan); padding-left:6px;
+    margin-bottom:4px; opacity:0.8;
+  }
+  .chat-msg img{ max-width:180px; border-radius:4px; display:block; margin-top:4px; }
+  .chat-msg .bubble{ cursor:pointer; }
+
+  /* ---------- owner controls ---------- */
+  .chip .kick-link{
+    display:inline-block; margin-top:4px; margin-left:6px; color:var(--danger); font-size:10px;
+    text-decoration:none; border:1px solid var(--danger); border-radius:2px; padding:2px 6px;
+  }
+  .owner-badge{ color:var(--signal); font-size:9px; margin-left:4px; }
+
+  /* ---------- settings panel ---------- */
+  #settings-panel{
+    position:absolute; inset:0; z-index:1200; background:rgba(8,11,10,0.97);
+    display:none; flex-direction:column; padding:24px;
+  }
+  #settings-panel.open{ display:flex; }
+  #settings-panel .setting-row{
+    display:flex; align-items:center; justify-content:space-between; padding:14px 4px;
+    border-bottom:1px solid var(--line); font-family:var(--mono); font-size:13px; color:var(--text);
+  }
+  #settings-panel .setting-row input[type="checkbox"]{ width:auto; margin:0; accent-color:var(--signal); }
+  #settings-close{ position:absolute; top:14px; right:14px; width:auto; background:transparent; border:1px solid var(--line); padding:6px 12px; font-size:12px; }
+  #stats-block{ margin-top:20px; font-family:var(--mono); font-size:12px; color:var(--text-dim); line-height:1.8; }
+  #change-password-row{ display:flex; gap:8px; margin-top:16px; }
+  #change-password-row input{ flex:1; margin:0; }
+  #change-password-row button{ width:auto; margin:0; padding:0 16px; }
 </style>
 </head>
 <body>
@@ -304,11 +366,16 @@
       <input id="room" maxlength="24" placeholder="např. VYLET-2026" autocomplete="off" />
       <label for="room-password" id="t-password-label">Heslo (jen pro soukromou mistnost)</label>
       <input id="room-password" type="password" maxlength="64" placeholder="volitelne" autocomplete="off" />
+      <div class="color-row">
+        <input type="color" id="avatar-color" value="#ffb454" />
+        <span id="t-color-label">Barva znacky</span>
+      </div>
       <label class="consent-row" for="consent-checkbox">
         <input type="checkbox" id="consent-checkbox" />
         <span id="t-consent-label">Souhlasim se sdilenim polohy, chatu a hlasu s ostatnimi v teto mistnosti.</span>
       </label>
       <button id="join-btn">Vstoupit</button>
+      <a id="apk-link" href="https://github.com/filipcerovsky0-max/squad-tracker-android/releases/latest" target="_blank"></a>
       <p id="join-error"></p>
     </div>
   </div>
@@ -319,6 +386,7 @@
       <span class="room-tag"><span id="status-dot"></span><span id="t-room-prefix">ROOM</span> <b id="room-label"></b></span>
       <div class="topbar-right">
         <span class="room-tag" id="me-label"></span>
+        <button class="icon-btn" id="settings-toggle"><span id="t-settings-btn">Settings</span></button>
         <button class="icon-btn" id="mute-toggle"><span id="t-mute-btn">Mute</span></button>
         <button class="icon-btn" id="share-toggle"><span id="t-share-btn">Share</span></button>
         <button class="icon-btn" id="chat-toggle"><span id="t-chat-btn">Chat</span><span class="unread-dot" id="unread-dot"></span></button>
@@ -340,16 +408,52 @@
         <button id="chat-close">Zavřít</button>
       </div>
       <div id="chat-messages"></div>
+      <div id="typing-indicator"></div>
+      <div id="reply-preview">
+        <span class="txt" id="reply-preview-text"></span>
+        <span class="cancel" id="reply-cancel">X</span>
+      </div>
       <div id="quick-reactions">
         <button class="quick-btn" id="qr-1"></button>
         <button class="quick-btn" id="qr-2"></button>
         <button class="quick-btn" id="qr-3"></button>
       </div>
       <div id="chat-input-row">
+        <input type="file" id="chat-image-input" accept="image/*" style="display:none;" />
+        <button id="chat-image-btn" style="width:auto; margin:0; padding:11px 14px;">IMG</button>
         <input id="chat-input" maxlength="500" placeholder="Napis zpravu..." autocomplete="off" />
         <button id="chat-send">Odeslat</button>
       </div>
     </div>
+  </div>
+
+  <!-- SETTINGS PANEL -->
+  <div id="settings-panel">
+    <button id="settings-close">X</button>
+    <p class="eyebrow" id="t-settings-title">Nastaveni</p>
+    <div class="setting-row">
+      <span id="t-sound-chat">Zvuk chatu</span>
+      <input type="checkbox" id="sound-chat-toggle" checked />
+    </div>
+    <div class="setting-row">
+      <span id="t-sound-voice">Zvuk hlasovek</span>
+      <input type="checkbox" id="sound-voice-toggle" checked />
+    </div>
+    <div class="setting-row">
+      <span id="t-sound-proximity">Zvuk pri priblizeni</span>
+      <input type="checkbox" id="sound-proximity-toggle" checked />
+    </div>
+    <div class="setting-row">
+      <span id="t-notif-label">Oznameni na pozadi</span>
+      <input type="checkbox" id="notif-toggle" />
+    </div>
+    <div id="owner-controls" style="display:none;">
+      <div id="change-password-row">
+        <input type="password" id="new-password-input" maxlength="64" />
+        <button id="change-password-btn"></button>
+      </div>
+    </div>
+    <div id="stats-block"></div>
   </div>
 
   <!-- SHARE PANEL -->
@@ -388,7 +492,14 @@
       muteBtn: 'Ztlumit', muteBtnOn: 'Ztlumeno', shareBtn: 'Sdilet',
       shareTitle: 'Pozvi do jednotky', shareCopy: 'Kopirovat odkaz', shareCopied: 'Zkopirovano!', shareNative: 'Sdilet odkaz',
       pinBtnTitle: 'Sraz tady', pinSet: 'Bod srazu nastaven', pinCleared: 'Bod srazu zrusen', pinPopup: 'Sraz ({by})', navigate: 'Naviguj', clearPin: 'Zrusit',
-      react1: 'Jdu tam', react2: 'Dorazil jsem', react3: 'Za 5 min'
+      react1: 'Jdu tam', react2: 'Dorazil jsem', react3: 'Za 5 min',
+      colorLabel: 'Barva znacky', settingsBtn: 'Nastaveni', settingsTitle: 'Nastaveni',
+      soundChat: 'Zvuk chatu', soundVoice: 'Zvuk hlasovek', soundProximity: 'Zvuk pri priblizeni',
+      notifLabel: 'Oznameni na pozadi', changePasswordBtn: 'Zmenit heslo mistnosti', apkLinkText: 'Stahnout Android appku',
+      kickLink: 'Vyhodit', ownerBadge: 'ADMIN', kickedMsg: 'Byl jsi vyhozen z mistnosti.',
+      typingText: '{name} pise...', replyingTo: 'Odpovidas {name}',
+      statsMembers: 'Lidi v mistnosti', statsMessages: 'Zprav celkem', statsDistance: 'Ujita vzdalenost',
+      etaLabel: 'cca {eta}'
     },
     en: {
       title: 'Join the squad', nameLabel: 'Your name', namePlaceholder: 'e.g. Falcon',
@@ -406,7 +517,14 @@
       muteBtn: 'Mute', muteBtnOn: 'Muted', shareBtn: 'Share',
       shareTitle: 'Invite to the squad', shareCopy: 'Copy link', shareCopied: 'Copied!', shareNative: 'Share link',
       pinBtnTitle: 'Meet here', pinSet: 'Meeting point set', pinCleared: 'Meeting point cleared', pinPopup: 'Meet here ({by})', navigate: 'Navigate', clearPin: 'Clear',
-      react1: 'On my way', react2: "I'm here", react3: '5 min away'
+      react1: 'On my way', react2: "I'm here", react3: '5 min away',
+      colorLabel: 'Marker color', settingsBtn: 'Settings', settingsTitle: 'Settings',
+      soundChat: 'Chat sound', soundVoice: 'Voice sound', soundProximity: 'Proximity sound',
+      notifLabel: 'Background notifications', changePasswordBtn: 'Change room password', apkLinkText: 'Get the Android app',
+      kickLink: 'Kick', ownerBadge: 'ADMIN', kickedMsg: 'You were removed from the room.',
+      typingText: '{name} is typing...', replyingTo: 'Replying to {name}',
+      statsMembers: 'People in room', statsMessages: 'Total messages', statsDistance: 'Distance traveled',
+      etaLabel: '~{eta}'
     },
     fr: {
       title: "Rejoindre l'equipe", nameLabel: 'Ton nom', namePlaceholder: 'ex. Falcon',
@@ -424,7 +542,14 @@
       muteBtn: 'Muet', muteBtnOn: 'Coupe', shareBtn: 'Partager',
       shareTitle: "Inviter l'equipe", shareCopy: 'Copier le lien', shareCopied: 'Copie !', shareNative: 'Partager le lien',
       pinBtnTitle: 'Point de rdv', pinSet: 'Point de rdv defini', pinCleared: 'Point de rdv efface', pinPopup: 'Rdv ici ({by})', navigate: 'Naviguer', clearPin: 'Effacer',
-      react1: "J'arrive", react2: 'Je suis la', react3: 'Dans 5 min'
+      react1: "J'arrive", react2: 'Je suis la', react3: 'Dans 5 min',
+      colorLabel: 'Couleur du repere', settingsBtn: 'Reglages', settingsTitle: 'Reglages',
+      soundChat: 'Son du chat', soundVoice: 'Son des messages vocaux', soundProximity: 'Son de proximite',
+      notifLabel: 'Notifications en arriere-plan', changePasswordBtn: 'Changer le mot de passe', apkLinkText: "Telecharger l'appli Android",
+      kickLink: 'Exclure', ownerBadge: 'ADMIN', kickedMsg: 'Tu as ete exclu de la salle.',
+      typingText: '{name} ecrit...', replyingTo: 'Reponse a {name}',
+      statsMembers: 'Personnes dans la salle', statsMessages: 'Total des messages', statsDistance: 'Distance parcourue',
+      etaLabel: '~{eta}'
     },
     es: {
       title: 'Unirse al equipo', nameLabel: 'Tu nombre', namePlaceholder: 'ej. Falcon',
@@ -442,7 +567,14 @@
       muteBtn: 'Silenciar', muteBtnOn: 'Silenciado', shareBtn: 'Compartir',
       shareTitle: 'Invitar al equipo', shareCopy: 'Copiar enlace', shareCopied: 'Copiado!', shareNative: 'Compartir enlace',
       pinBtnTitle: 'Punto de encuentro', pinSet: 'Punto de encuentro fijado', pinCleared: 'Punto de encuentro borrado', pinPopup: 'Encuentro ({by})', navigate: 'Navegar', clearPin: 'Borrar',
-      react1: 'Voy para alla', react2: 'Ya llegue', react3: 'En 5 min'
+      react1: 'Voy para alla', react2: 'Ya llegue', react3: 'En 5 min',
+      colorLabel: 'Color del marcador', settingsBtn: 'Ajustes', settingsTitle: 'Ajustes',
+      soundChat: 'Sonido del chat', soundVoice: 'Sonido de voz', soundProximity: 'Sonido de proximidad',
+      notifLabel: 'Notificaciones en segundo plano', changePasswordBtn: 'Cambiar contrasena de sala', apkLinkText: 'Descargar app de Android',
+      kickLink: 'Expulsar', ownerBadge: 'ADMIN', kickedMsg: 'Has sido expulsado de la sala.',
+      typingText: '{name} esta escribiendo...', replyingTo: 'Respondiendo a {name}',
+      statsMembers: 'Personas en la sala', statsMessages: 'Mensajes totales', statsDistance: 'Distancia recorrida',
+      etaLabel: '~{eta}'
     },
     ar: {
       title: 'انضم إلى الفريق', nameLabel: 'اسمك', namePlaceholder: 'مثال: Falcon',
@@ -460,7 +592,14 @@
       muteBtn: 'كتم', muteBtnOn: 'مكتوم', shareBtn: 'مشاركة',
       shareTitle: 'ادعُ الفريق', shareCopy: 'نسخ الرابط', shareCopied: 'تم النسخ!', shareNative: 'مشاركة الرابط',
       pinBtnTitle: 'نقطة اللقاء', pinSet: 'تم تحديد نقطة اللقاء', pinCleared: 'تم إلغاء نقطة اللقاء', pinPopup: 'نقطة اللقاء ({by})', navigate: 'التنقل', clearPin: 'إلغاء',
-      react1: 'في الطريق', react2: 'وصلت', react3: 'بعد 5 دقائق'
+      react1: 'في الطريق', react2: 'وصلت', react3: 'بعد 5 دقائق',
+      colorLabel: 'لون العلامة', settingsBtn: 'الإعدادات', settingsTitle: 'الإعدادات',
+      soundChat: 'صوت الدردشة', soundVoice: 'صوت الرسائل الصوتية', soundProximity: 'صوت الاقتراب',
+      notifLabel: 'إشعارات الخلفية', changePasswordBtn: 'تغيير كلمة مرور الغرفة', apkLinkText: 'تحميل تطبيق أندرويد',
+      kickLink: 'طرد', ownerBadge: 'مسؤول', kickedMsg: 'تم إخراجك من الغرفة.',
+      typingText: '{name} يكتب...', replyingTo: 'الرد على {name}',
+      statsMembers: 'الأشخاص في الغرفة', statsMessages: 'إجمالي الرسائل', statsDistance: 'المسافة المقطوعة',
+      etaLabel: '~{eta}'
     },
     hi: {
       title: 'दल में शामिल हों', nameLabel: 'आपका नाम', namePlaceholder: 'जैसे Falcon',
@@ -478,7 +617,14 @@
       muteBtn: 'म्यूट', muteBtnOn: 'म्यूट किया', shareBtn: 'शेयर',
       shareTitle: 'दल में आमंत्रित करें', shareCopy: 'लिंक कॉपी करें', shareCopied: 'कॉपी हो गया!', shareNative: 'लिंक शेयर करें',
       pinBtnTitle: 'मिलने की जगह', pinSet: 'मिलने की जगह तय हुई', pinCleared: 'मिलने की जगह हटाई गई', pinPopup: 'यहां मिलें ({by})', navigate: 'नेविगेट करें', clearPin: 'हटाएं',
-      react1: 'आ रहा हूं', react2: 'पहुंच गया', react3: '5 मिनट में'
+      react1: 'आ रहा हूं', react2: 'पहुंच गया', react3: '5 मिनट में',
+      colorLabel: 'मार्कर रंग', settingsBtn: 'सेटिंग्स', settingsTitle: 'सेटिंग्स',
+      soundChat: 'चैट ध्वनि', soundVoice: 'वॉइस ध्वनि', soundProximity: 'नज़दीकी ध्वनि',
+      notifLabel: 'बैकग्राउंड सूचनाएं', changePasswordBtn: 'रूम पासवर्ड बदलें', apkLinkText: 'Android ऐप डाउनलोड करें',
+      kickLink: 'निकालें', ownerBadge: 'एडमिन', kickedMsg: 'आपको रूम से हटा दिया गया है।',
+      typingText: '{name} टाइप कर रहा है...', replyingTo: '{name} को जवाब',
+      statsMembers: 'रूम में लोग', statsMessages: 'कुल संदेश', statsDistance: 'तय की गई दूरी',
+      etaLabel: '~{eta}'
     }
   };
 
@@ -526,6 +672,15 @@
     document.getElementById('chat-close').textContent = t('closeBtn');
     document.getElementById('chat-input').placeholder = t('chatPlaceholder');
     document.getElementById('chat-send').textContent = t('sendBtn');
+    document.getElementById('t-color-label').textContent = t('colorLabel');
+    document.getElementById('t-settings-btn').textContent = t('settingsBtn');
+    document.getElementById('t-settings-title').textContent = t('settingsTitle');
+    document.getElementById('t-sound-chat').textContent = t('soundChat');
+    document.getElementById('t-sound-voice').textContent = t('soundVoice');
+    document.getElementById('t-sound-proximity').textContent = t('soundProximity');
+    document.getElementById('t-notif-label').textContent = t('notifLabel');
+    changePasswordBtn.textContent = t('changePasswordBtn');
+    apkLink.textContent = t('apkLinkText');
     document.querySelectorAll('#lang-switch button').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.lang === currentLang);
     });
@@ -573,6 +728,25 @@
   const qr1 = document.getElementById('qr-1');
   const qr2 = document.getElementById('qr-2');
   const qr3 = document.getElementById('qr-3');
+  const avatarColor = document.getElementById('avatar-color');
+  const apkLink = document.getElementById('apk-link');
+  const settingsToggle = document.getElementById('settings-toggle');
+  const settingsPanel = document.getElementById('settings-panel');
+  const settingsClose = document.getElementById('settings-close');
+  const soundChatToggle = document.getElementById('sound-chat-toggle');
+  const soundVoiceToggle = document.getElementById('sound-voice-toggle');
+  const soundProximityToggle = document.getElementById('sound-proximity-toggle');
+  const notifToggle = document.getElementById('notif-toggle');
+  const ownerControls = document.getElementById('owner-controls');
+  const newPasswordInput = document.getElementById('new-password-input');
+  const changePasswordBtn = document.getElementById('change-password-btn');
+  const statsBlock = document.getElementById('stats-block');
+  const typingIndicator = document.getElementById('typing-indicator');
+  const replyPreview = document.getElementById('reply-preview');
+  const replyPreviewText = document.getElementById('reply-preview-text');
+  const replyCancel = document.getElementById('reply-cancel');
+  const chatImageInput = document.getElementById('chat-image-input');
+  const chatImageBtn = document.getElementById('chat-image-btn');
 
   applyTranslations();
 
@@ -592,6 +766,66 @@
   let voiceMuted = false;
   let wakeLock = null;
   let pinMarker = null;
+  let isOwner = false;
+  let replyTarget = null;
+  let typingIndicatorTimeout = null;
+  let lastTypingSent = 0;
+  let appHidden = false;
+  let soundChatOn = localStorage.getItem('sq_sound_chat') !== 'off';
+  let soundVoiceOn = localStorage.getItem('sq_sound_voice') !== 'off';
+  let soundProximityOn = localStorage.getItem('sq_sound_proximity') !== 'off';
+
+  // Persisted per-device avatar color (used for your marker + initial letter)
+  const savedColor = localStorage.getItem('sq_color');
+  if (savedColor) avatarColor.value = savedColor;
+  else localStorage.setItem('sq_color', avatarColor.value);
+
+  document.addEventListener('visibilitychange', () => {
+    appHidden = document.visibilityState === 'hidden';
+  });
+
+  soundChatToggle.checked = soundChatOn;
+  soundVoiceToggle.checked = soundVoiceOn;
+  soundProximityToggle.checked = soundProximityOn;
+  soundChatToggle.addEventListener('change', () => {
+    soundChatOn = soundChatToggle.checked;
+    localStorage.setItem('sq_sound_chat', soundChatOn ? 'on' : 'off');
+  });
+  soundVoiceToggle.addEventListener('change', () => {
+    soundVoiceOn = soundVoiceToggle.checked;
+    localStorage.setItem('sq_sound_voice', soundVoiceOn ? 'on' : 'off');
+  });
+  soundProximityToggle.addEventListener('change', () => {
+    soundProximityOn = soundProximityToggle.checked;
+    localStorage.setItem('sq_sound_proximity', soundProximityOn ? 'on' : 'off');
+  });
+
+  notifToggle.addEventListener('change', () => {
+    if (notifToggle.checked && 'Notification' in window && Notification.permission !== 'granted'){
+      Notification.requestPermission().then((perm) => {
+        if (perm !== 'granted') notifToggle.checked = false;
+      });
+    }
+  });
+
+  function notifyBackground(title, body){
+    if (!notifToggle.checked || !appHidden) return;
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    try { new Notification(title, { body, icon: '/icons/icon-192.png' }); } catch (e) { /* ignore */ }
+  }
+
+  settingsToggle.addEventListener('click', () => {
+    ownerControls.style.display = isOwner ? 'block' : 'none';
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({type:'get_stats'}));
+    settingsPanel.classList.add('open');
+  });
+  settingsClose.addEventListener('click', () => settingsPanel.classList.remove('open'));
+  changePasswordBtn.addEventListener('click', () => {
+    if (ws && ws.readyState === WebSocket.OPEN){
+      ws.send(JSON.stringify({type:'change_password', password: newPasswordInput.value}));
+      newPasswordInput.value = '';
+    }
+  });
 
   // Prefill room code from a shared link like https://squad-tracker.site/?room=CODE
   const urlParams = new URLSearchParams(location.search);
@@ -646,21 +880,25 @@
     showSpeaking._t = setTimeout(()=>speakingIndicator.classList.remove('show'), 2000);
   }
 
-  function markerIcon(isMe){
+  function markerIcon(isMe, color, initial){
+    const bg = color || (isMe ? 'var(--signal)' : 'var(--cyan)');
     return L.divIcon({
       className: '',
-      html: '<div class="squad-marker' + (isMe?' me':'') + '"><div class="ring"></div><div class="dot"></div></div>',
+      html: '<div class="squad-marker' + (isMe?' me':'') + '"><div class="ring"></div>' +
+        '<div class="dot" style="background:' + bg + '">' + (initial || '') + '</div></div>',
       iconSize: [16,16],
       iconAnchor: [8,8]
     });
   }
 
-  function upsertMarker(name, lat, lng, isMe){
+  function upsertMarker(name, lat, lng, isMe, color){
     lastKnown[name] = {lat, lng};
+    const initial = name ? name.charAt(0).toUpperCase() : '';
     if (markers[name]){
       markers[name].setLatLng([lat, lng]);
+      markers[name].setIcon(markerIcon(isMe, color, initial));
     } else {
-      markers[name] = L.marker([lat, lng], {icon: markerIcon(isMe)})
+      markers[name] = L.marker([lat, lng], {icon: markerIcon(isMe, color, initial)})
         .bindTooltip(name, {permanent:true, direction:'top', offset:[0,-10], className:'marker-label'})
         .addTo(map);
     }
@@ -676,6 +914,13 @@
     }
   }
 
+  function formatEta(distanceM, speedMps){
+    if (!speedMps || speedMps < 0.3) return null;
+    const etaS = distanceM / speedMps;
+    if (etaS < 60) return Math.round(etaS) + 's';
+    return Math.round(etaS / 60) + 'min';
+  }
+
   function renderHud(users){
     hudBottom.innerHTML = '';
     users.forEach(u => {
@@ -684,22 +929,39 @@
       const isStale = !isMe && u.age_s != null && u.age_s > 30;
       chip.className = 'chip' + (isMe ? ' self' : '') + (isStale ? ' stale' : '');
       let distText = '-';
+      let distMeters = null;
       if (!isMe && selfLatLng && u.lat != null){
-        const d = haversine(selfLatLng.lat, selfLatLng.lng, u.lat, u.lng);
-        distText = d < 1000 ? Math.round(d) + ' m' : (d/1000).toFixed(1) + ' km';
+        distMeters = haversine(selfLatLng.lat, selfLatLng.lng, u.lat, u.lng);
+        distText = distMeters < 1000 ? Math.round(distMeters) + ' m' : (distMeters/1000).toFixed(1) + ' km';
       }
       let metaHtml = '';
       if (u.battery != null) metaHtml += '<span class="battery">BAT ' + u.battery + '%</span>';
       if (isStale) metaHtml += '<span class="age">' + formatAge(u.age_s) + '</span>';
+      if (!isMe && distMeters != null && u.speed_mps){
+        const eta = formatEta(distMeters, u.speed_mps);
+        if (eta) metaHtml += '<span class="age">' + t('etaLabel', {eta}) + '</span>';
+      }
       const navHtml = (!isMe && u.lat != null)
         ? '<a class="nav-link" href="geo:' + u.lat + ',' + u.lng + '?q=' + u.lat + ',' + u.lng + '" target="_blank">' + t('navigate') + '</a>'
         : '';
+      const ownerBadgeHtml = u.is_owner ? '<span class="owner-badge">' + t('ownerBadge') + '</span>' : '';
+      const kickHtml = (isOwner && !isMe)
+        ? '<a class="kick-link" href="#" data-kick="' + u.username.replace(/"/g,'&quot;') + '">' + t('kickLink') + '</a>'
+        : '';
       chip.innerHTML =
-        '<span class="name">' + (isMe ? u.username + t('meSuffix') : u.username) + '</span>' +
+        '<span class="name">' + (isMe ? u.username + t('meSuffix') : u.username) + ownerBadgeHtml + '</span>' +
         '<span class="dist">' + distText + '</span>' +
         (metaHtml ? '<div class="meta-row">' + metaHtml + '</div>' : '') +
-        navHtml;
+        navHtml + kickHtml;
       hudBottom.appendChild(chip);
+    });
+    hudBottom.querySelectorAll('[data-kick]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (ws && ws.readyState === WebSocket.OPEN){
+          ws.send(JSON.stringify({type:'kick', username: el.dataset.kick}));
+        }
+      });
     });
   }
 
@@ -710,7 +972,7 @@
   }
 
   // ---------- CHAT ----------
-  function appendChatMessage(who, text, isSelf){
+  function appendChatMessage(who, text, isSelf, image, replyTo){
     const div = document.createElement('div');
     div.className = 'chat-msg' + (isSelf ? ' self' : '');
     const whoEl = document.createElement('div');
@@ -718,7 +980,28 @@
     whoEl.textContent = isSelf ? t('you') : who;
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
-    bubble.textContent = text;
+    if (replyTo){
+      const quote = document.createElement('div');
+      quote.className = 'reply-quote';
+      quote.textContent = replyTo.username + ': ' + replyTo.text;
+      bubble.appendChild(quote);
+    }
+    if (text){
+      const textEl = document.createElement('div');
+      textEl.textContent = text;
+      bubble.appendChild(textEl);
+    }
+    if (image){
+      const img = document.createElement('img');
+      img.src = 'data:image/jpeg;base64,' + image;
+      bubble.appendChild(img);
+    }
+    bubble.addEventListener('click', () => {
+      replyTarget = { username: who, text: text ? text.slice(0, 80) : '[image]' };
+      replyPreviewText.textContent = t('replyingTo', {name: who});
+      replyPreview.classList.add('show');
+      chatInput.focus();
+    });
     div.appendChild(whoEl);
     div.appendChild(bubble);
     chatMessages.appendChild(div);
@@ -730,15 +1013,24 @@
     }
   }
 
+  replyCancel.addEventListener('click', () => {
+    replyTarget = null;
+    replyPreview.classList.remove('show');
+  });
+
   function sendChat(){
     const text = chatInput.value.trim();
     if (!text || !ws || ws.readyState !== WebSocket.OPEN){
       if (!ws || ws.readyState !== WebSocket.OPEN) showToast(t('notConnected'));
       return;
     }
-    ws.send(JSON.stringify({type:'chat', text}));
-    appendChatMessage(username, text, true); // show immediately, don't wait for server echo
+    const payload = {type:'chat', text};
+    if (replyTarget) payload.reply_to = replyTarget;
+    ws.send(JSON.stringify(payload));
+    appendChatMessage(username, text, true, null, replyTarget); // show immediately, don't wait for server echo
     chatInput.value = '';
+    replyTarget = null;
+    replyPreview.classList.remove('show');
   }
 
   chatToggle.addEventListener('click', () => {
@@ -750,6 +1042,49 @@
   chatClose.addEventListener('click', () => chatPanel.classList.remove('open'));
   chatSend.addEventListener('click', sendChat);
   chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });
+  chatInput.addEventListener('input', () => {
+    const now = Date.now();
+    if (now - lastTypingSent < 2000) return;
+    lastTypingSent = now;
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({type:'typing'}));
+  });
+
+  // ---------- CHAT IMAGES ----------
+  chatImageBtn.addEventListener('click', () => chatImageInput.click());
+  chatImageInput.addEventListener('change', () => {
+    const file = chatImageInput.files && chatImageInput.files[0];
+    chatImageInput.value = '';
+    if (!file) return;
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      img.onload = () => {
+        const maxDim = 800;
+        let w = img.width, h = img.height;
+        if (w > maxDim || h > maxDim){
+          const scale = maxDim / Math.max(w, h);
+          w = Math.round(w * scale); h = Math.round(h * scale);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+        const b64 = dataUrl.split(',')[1];
+        if (!ws || ws.readyState !== WebSocket.OPEN){
+          showToast(t('notConnected'));
+          return;
+        }
+        const payload = {type:'chat', text:'', image: b64};
+        if (replyTarget) payload.reply_to = replyTarget;
+        ws.send(JSON.stringify(payload));
+        appendChatMessage(username, '', true, b64, replyTarget);
+        replyTarget = null;
+        replyPreview.classList.remove('show');
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
 
   // ---------- WALKIE-TALKIE ----------
   let activeStream = null;
@@ -920,7 +1255,7 @@
     ws.onopen = () => {
       reconnectDelay = 1000;
       statusDot.classList.remove('offline','pulse');
-      ws.send(JSON.stringify({type:'join', username, room, password: roomPassword}));
+      ws.send(JSON.stringify({type:'join', username, room, password: roomPassword, color: avatarColor.value}));
     };
 
     ws.onmessage = (evt) => {
@@ -929,6 +1264,7 @@
 
       if (msg.type === 'joined'){
         joinBtn.disabled = false;
+        isOwner = !!msg.is_owner;
         if (joinScreen.style.display !== 'none'){
           joinScreen.style.display = 'none';
           mapScreen.style.display = 'flex';
@@ -943,23 +1279,46 @@
         joinError.textContent = t('wrongPassword');
         intentionalClose = true;
         ws.close();
+      } else if (msg.type === 'kicked'){
+        showToast(t('kickedMsg'));
+        intentionalClose = true;
+        ws.close();
+        mapScreen.style.display = 'none';
+        joinScreen.style.display = 'flex';
+      } else if (msg.type === 'password_changed'){
+        showToast(t('shareCopied'));
+      } else if (msg.type === 'room_stats'){
+        statsBlock.innerHTML =
+          '<div>' + t('statsMembers') + ': ' + msg.member_count + '</div>' +
+          '<div>' + t('statsMessages') + ': ' + msg.message_count + '</div>';
       } else if (msg.type === 'presence'){
         const activeNames = new Set(msg.users.map(u => u.username));
         msg.users.forEach(u => {
-          if (u.lat != null) upsertMarker(u.username, u.lat, u.lng, u.username === username);
+          if (u.lat != null) upsertMarker(u.username, u.lat, u.lng, u.username === username, u.color);
         });
         removeStaleMarkers(activeNames);
         renderHud(msg.users);
       } else if (msg.type === 'proximity_alert'){
         showToast(t('proximity', {name: msg.with, dist: Math.round(msg.distance_m)}));
-        if (navigator.vibrate) navigator.vibrate(200);
+        if (soundProximityOn){
+          if (navigator.vibrate) navigator.vibrate(200);
+          notifyBackground('Squad Tracker', t('proximity', {name: msg.with, dist: Math.round(msg.distance_m)}));
+        }
       } else if (msg.type === 'chat'){
-        appendChatMessage(msg.username, msg.text, msg.username === username);
+        appendChatMessage(msg.username, msg.text, msg.username === username, msg.image, msg.reply_to);
+        if (soundChatOn && msg.username !== username) notifyBackground(msg.username, msg.text || '[image]');
       } else if (msg.type === 'chat_history'){
-        msg.messages.forEach(m => appendChatMessage(m.username, m.text, m.username === username));
+        msg.messages.forEach(m => appendChatMessage(m.username, m.text, m.username === username, m.image, m.reply_to));
+      } else if (msg.type === 'typing'){
+        typingIndicator.textContent = t('typingText', {name: msg.username});
+        clearTimeout(typingIndicatorTimeout);
+        typingIndicatorTimeout = setTimeout(() => { typingIndicator.textContent = ''; }, 3000);
       } else if (msg.type === 'voice'){
         enqueueVoice(msg.username, msg.audio, msg.mime);
-        if (navigator.vibrate) navigator.vibrate(80);
+        if (soundVoiceOn){
+          if (navigator.vibrate) navigator.vibrate(80);
+          notifyBackground(msg.username, t('speaking', {name: msg.username}));
+        }
       } else if (msg.type === 'pin'){
         setPinMarker(msg.lat, msg.lng, msg.by);
       } else if (msg.type === 'pin_clear'){
