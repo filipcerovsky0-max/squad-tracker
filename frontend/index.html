@@ -263,7 +263,7 @@
   .pin-popup .pin-clear{ color:var(--danger); margin-left:8px; cursor:pointer; }
 
   /* ---------- TOPBAR extra icon buttons ---------- */
-  #mute-toggle.muted{ color:var(--danger); border-color:var(--danger); }
+  /* mute lives as a checkbox in Settings now, see .setting-row */
 
   /* ---------- SHARE PANEL ---------- */
   #share-panel{
@@ -387,8 +387,6 @@
       <div class="topbar-right">
         <span class="room-tag" id="me-label"></span>
         <button class="icon-btn" id="settings-toggle"><span id="t-settings-btn">Settings</span></button>
-        <button class="icon-btn" id="mute-toggle"><span id="t-mute-btn">Mute</span></button>
-        <button class="icon-btn" id="share-toggle"><span id="t-share-btn">Share</span></button>
         <button class="icon-btn" id="chat-toggle"><span id="t-chat-btn">Chat</span><span class="unread-dot" id="unread-dot"></span></button>
       </div>
     </div>
@@ -432,6 +430,10 @@
     <button id="settings-close">X</button>
     <p class="eyebrow" id="t-settings-title">Nastaveni</p>
     <div class="setting-row">
+      <span id="t-mute-voice-label">Ztlumit prijate hlasovky</span>
+      <input type="checkbox" id="mute-voice-toggle" />
+    </div>
+    <div class="setting-row">
       <span id="t-sound-chat">Zvuk chatu</span>
       <input type="checkbox" id="sound-chat-toggle" checked />
     </div>
@@ -447,6 +449,7 @@
       <span id="t-notif-label">Oznameni na pozadi</span>
       <input type="checkbox" id="notif-toggle" />
     </div>
+    <button id="open-share-btn" style="margin-top:16px;"></button>
     <div id="owner-controls" style="display:none;">
       <div id="change-password-row">
         <input type="password" id="new-password-input" maxlength="64" />
@@ -635,7 +638,6 @@
   }
 
   let currentLang = detectDefaultLang();
-  let muteBtnState = false;
 
   function t(key, vars){
     let str = (I18N[currentLang] && I18N[currentLang][key]) || I18N.en[key] || key;
@@ -651,8 +653,8 @@
     document.getElementById('t-password-label').textContent = t('passwordLabel');
     document.getElementById('t-consent-label').textContent = t('consentLabel');
     document.getElementById('room-password').placeholder = t('passwordPlaceholder');
-    document.getElementById('t-mute-btn').textContent = muteBtnState ? t('muteBtnOn') : t('muteBtn');
-    document.getElementById('t-share-btn').textContent = t('shareBtn');
+    document.getElementById('t-mute-voice-label').textContent = t('muteBtn');
+    openShareBtn.textContent = t('shareBtn');
     document.getElementById('t-share-title').textContent = t('shareTitle');
     shareCopyBtn.textContent = t('shareCopy');
     shareNativeBtn.textContent = t('shareNative');
@@ -716,8 +718,8 @@
   const chatInput = document.getElementById('chat-input');
   const chatSend = document.getElementById('chat-send');
   const unreadDot = document.getElementById('unread-dot');
-  const muteToggle = document.getElementById('mute-toggle');
-  const shareToggle = document.getElementById('share-toggle');
+  const muteVoiceToggle = document.getElementById('mute-voice-toggle');
+  const openShareBtn = document.getElementById('open-share-btn');
   const sharePanel = document.getElementById('share-panel');
   const shareClose = document.getElementById('share-close');
   const shareQr = document.getElementById('share-qr');
@@ -758,6 +760,9 @@
   let intentionalClose = false;
   let map = null;
   let selfLatLng = null;
+  let ownSpeedMps = null;
+  let pinLatLng = null;
+  let pinBy = null;
   const markers = {};      // username -> L.marker
   const lastKnown = {};    // username -> {lat,lng}
   let watchId = null;
@@ -1295,9 +1300,11 @@
         const activeNames = new Set(msg.users.map(u => u.username));
         msg.users.forEach(u => {
           if (u.lat != null) upsertMarker(u.username, u.lat, u.lng, u.username === username, u.color);
+          if (u.username === username) ownSpeedMps = u.speed_mps;
         });
         removeStaleMarkers(activeNames);
         renderHud(msg.users);
+        if (pinLatLng) updatePinPopup();
       } else if (msg.type === 'proximity_alert'){
         showToast(t('proximity', {name: msg.with, dist: Math.round(msg.distance_m)}));
         if (soundProximityOn){
@@ -1374,19 +1381,35 @@
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({type:'pin_clear'}));
   };
 
+  function buildPinPopupHtml(lat, lng, by){
+    let etaHtml = '';
+    if (selfLatLng){
+      const dist = haversine(selfLatLng.lat, selfLatLng.lng, lat, lng);
+      const eta = formatEta(dist, ownSpeedMps);
+      if (eta) etaHtml = '<br/>' + t('etaLabel', {eta});
+    }
+    return '<div class="pin-popup">' + t('pinPopup', {by: by}) + etaHtml +
+      '<br/><a href="geo:' + lat + ',' + lng + '?q=' + lat + ',' + lng + '" target="_blank">' + t('navigate') + '</a>' +
+      '<span class="pin-clear" onclick="window.__clearPin()">' + t('clearPin') + '</span></div>';
+  }
+
+  function updatePinPopup(){
+    if (!pinMarker || !pinLatLng) return;
+    pinMarker.setPopupContent(buildPinPopupHtml(pinLatLng.lat, pinLatLng.lng, pinBy));
+  }
+
   function setPinMarker(lat, lng, by){
     if (!map) return;
     if (pinMarker) map.removeLayer(pinMarker);
+    pinLatLng = {lat, lng};
+    pinBy = by;
     const icon = L.divIcon({
       className: '',
       html: '<div class="squad-marker"><div class="dot" style="background:var(--cyan)"></div></div>',
       iconSize: [16,16],
       iconAnchor: [8,8]
     });
-    const popupHtml = '<div class="pin-popup">' + t('pinPopup', {by: by}) +
-      '<br/><a href="geo:' + lat + ',' + lng + '?q=' + lat + ',' + lng + '" target="_blank">' + t('navigate') + '</a>' +
-      '<span class="pin-clear" onclick="window.__clearPin()">' + t('clearPin') + '</span></div>';
-    pinMarker = L.marker([lat, lng], {icon}).bindPopup(popupHtml).addTo(map);
+    pinMarker = L.marker([lat, lng], {icon}).bindPopup(buildPinPopupHtml(lat, lng, by)).addTo(map);
     showToast(t('pinSet'));
   }
 
@@ -1394,6 +1417,8 @@
     if (pinMarker && map){
       map.removeLayer(pinMarker);
       pinMarker = null;
+      pinLatLng = null;
+      pinBy = null;
       showToast(t('pinCleared'));
     }
   }
@@ -1409,12 +1434,12 @@
     }
   });
 
-  // ---------- MUTE TOGGLE ----------
-  muteToggle.addEventListener('click', () => {
-    voiceMuted = !voiceMuted;
-    muteBtnState = voiceMuted;
-    muteToggle.classList.toggle('muted', voiceMuted);
-    document.getElementById('t-mute-btn').textContent = voiceMuted ? t('muteBtnOn') : t('muteBtn');
+  // ---------- MUTE TOGGLE (persisted, lives inside Settings) ----------
+  voiceMuted = localStorage.getItem('sq_voice_muted') === 'on';
+  muteVoiceToggle.checked = voiceMuted;
+  muteVoiceToggle.addEventListener('change', () => {
+    voiceMuted = muteVoiceToggle.checked;
+    localStorage.setItem('sq_voice_muted', voiceMuted ? 'on' : 'off');
   });
 
   // ---------- QUICK REACTIONS ----------
@@ -1431,16 +1456,18 @@
   qr2.addEventListener('click', () => sendQuickReaction('react2'));
   qr3.addEventListener('click', () => sendQuickReaction('react3'));
 
-  // ---------- SHARE PANEL ----------
-  shareToggle.addEventListener('click', () => {
+  // ---------- SHARE PANEL (opened from Settings) ----------
+  function openSharePanel(){
     const url = location.origin + location.pathname + '?room=' + encodeURIComponent(room);
     shareLink.textContent = url;
     shareQr.src = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(url);
     if (navigator.share){
       shareNativeBtn.style.display = 'block';
     }
+    settingsPanel.classList.remove('open');
     sharePanel.classList.add('open');
-  });
+  }
+  openShareBtn.addEventListener('click', openSharePanel);
   shareClose.addEventListener('click', () => sharePanel.classList.remove('open'));
   shareCopyBtn.addEventListener('click', () => {
     navigator.clipboard.writeText(shareLink.textContent).then(() => {
