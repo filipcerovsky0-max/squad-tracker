@@ -8,10 +8,12 @@ picking the same display name can never overwrite each other's connection.
 """
 import asyncio
 import hashlib
+import hmac
 import itertools
 import json
 import math
 import os
+import secrets
 import sqlite3
 import time
 from pathlib import Path
@@ -33,6 +35,20 @@ MAX_REPLY_CHARS = 120
 TYPING_THROTTLE_SECONDS = 2
 MAX_SPEED_MPS = 15  # ~54 km/h; faster deltas are treated as GPS noise, not real movement
 ADMIN_KEY = os.environ.get("ADMIN_KEY", "")
+
+# ---- abuse / DoS protections ----
+MAX_ROOM_ID_LEN = 64
+MAX_ROOMS = 500
+MAX_MEMBERS_PER_ROOM = 60
+CHAT_MIN_INTERVAL = 0.4          # per-member: max ~2-3 chat/voice/pin actions per second
+VOICE_MIN_INTERVAL = 1.0
+PIN_MIN_INTERVAL = 1.0
+KICK_MIN_INTERVAL = 1.0
+WS_MAX_MSG_BYTES = 3_000_000      # hard cap on a single raw WS frame, before any JSON parsing
+MAX_FAILED_JOINS = 8              # per IP, within the window below
+FAILED_JOIN_WINDOW_S = 60
+PASSWORD_SALT_BYTES = 16
+PBKDF2_ITERATIONS = 100_000
 
 _id_counter = itertools.count(1)
 
@@ -69,8 +85,35 @@ def _clear_room_state(room_id: str):
     room_msg_count.pop(room_id, None)
 
 
-def _hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode("utf-8")).hexdigest()
+def _hash_password(password: str, salt: bytes | None = None) -> dict:
+    salt = salt or secrets.token_bytes(PASSWORD_SALT_BYTES)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, PBKDF2_ITERATIONS)
+    return {"salt": salt.hex(), "hash": digest.hex()}
+
+
+def _verify_password(password: str, stored: dict) -> bool:
+    if not stored:
+        return False
+    salt = bytes.fromhex(stored["salt"])
+    candidate = _hash_password(password, salt)
+    return hmac.compare_digest(candidate["hash"], stored["hash"])
+
+
+# failed_joins[(ip, room_id)] = list of failure timestamps within the last
+# FAILED_JOIN_WINDOW_S, used to throttle password brute-forcing of one specific
+# room without penalizing that IP for joining other, unrelated rooms.
+failed_joins: dict[tuple, list[float]] = {}
+
+
+def _too_many_failed_joins(key: tuple) -> bool:
+    now = time.time()
+    attempts = [t for t in failed_joins.get(key, []) if now - t < FAILED_JOIN_WINDOW_S]
+    failed_joins[key] = attempts
+    return len(attempts) >= MAX_FAILED_JOINS
+
+
+def _record_failed_join(key: tuple):
+    failed_joins.setdefault(key, []).append(time.time())
 
 
 async def broadcast_to_room(room_id, msg: dict, exclude: int | None = None):
@@ -194,8 +237,9 @@ def _promote_new_owner(room_id):
 
 
 async def websocket_handler(request):
-    ws = web.WebSocketResponse(heartbeat=HEARTBEAT_INTERVAL)
+    ws = web.WebSocketResponse(heartbeat=HEARTBEAT_INTERVAL, max_msg_size=WS_MAX_MSG_BYTES)
     await ws.prepare(request)
+    client_ip = request.remote or "unknown"
 
     room_id = None
     member_id = None
@@ -212,8 +256,10 @@ async def websocket_handler(request):
             mtype = data.get("type")
 
             if mtype == "join":
-                candidate_room_id = str(data.get("room", "default"))
-                candidate_username = str(data.get("username", "anon"))[:32]
+                candidate_room_id = str(data.get("room", "default"))[:MAX_ROOM_ID_LEN].strip()
+                if not candidate_room_id:
+                    candidate_room_id = "default"
+                candidate_username = str(data.get("username", "anon"))[:32].strip() or "anon"
                 provided_password = str(data.get("password") or "")
                 color = data.get("color")
                 if not isinstance(color, str) or not color.startswith("#") or len(color) not in (4, 7):
@@ -221,14 +267,26 @@ async def websocket_handler(request):
 
                 room_is_new = candidate_room_id not in rooms
                 if room_is_new:
+                    if len(rooms) >= MAX_ROOMS:
+                        await ws.send_str(json.dumps({"type": "join_error", "reason": "server_full"}))
+                        continue
                     room_passwords[candidate_room_id] = (
                         _hash_password(provided_password) if provided_password else None
                     )
                 else:
-                    required_hash = room_passwords.get(candidate_room_id)
-                    if required_hash and _hash_password(provided_password) != required_hash:
-                        await ws.send_str(json.dumps({"type": "join_error", "reason": "password"}))
+                    if len(rooms[candidate_room_id]) >= MAX_MEMBERS_PER_ROOM:
+                        await ws.send_str(json.dumps({"type": "join_error", "reason": "room_full"}))
                         continue
+                    required = room_passwords.get(candidate_room_id)
+                    if required:
+                        throttle_key = (client_ip, candidate_room_id)
+                        if _too_many_failed_joins(throttle_key):
+                            await ws.send_str(json.dumps({"type": "join_error", "reason": "rate_limited"}))
+                            continue
+                        if not _verify_password(provided_password, required):
+                            _record_failed_join(throttle_key)
+                            await ws.send_str(json.dumps({"type": "join_error", "reason": "password"}))
+                            continue
 
                 room_id = candidate_room_id
                 username = candidate_username
@@ -248,6 +306,10 @@ async def websocket_handler(request):
                     "speed_mps": None,
                     "distance_m": 0.0,
                     "last_typing_ts": 0,
+                    "last_chat_ts": 0,
+                    "last_voice_ts": 0,
+                    "last_pin_ts": 0,
+                    "last_kick_ts": 0,
                 }
                 if room_is_new:
                     room_owners[room_id] = member_id
@@ -314,6 +376,10 @@ async def websocket_handler(request):
                 entry = rooms.get(room_id, {}).get(member_id)
                 if not entry:
                     continue
+                now = time.time()
+                if now - entry["last_chat_ts"] < CHAT_MIN_INTERVAL:
+                    continue
+                entry["last_chat_ts"] = now
                 text = str(data.get("text", "")).strip()[:MAX_CHAT_CHARS]
                 image_b64 = data.get("image")
                 if image_b64 and len(image_b64) > MAX_IMAGE_B64_CHARS:
@@ -344,6 +410,10 @@ async def websocket_handler(request):
                 entry = rooms.get(room_id, {}).get(member_id)
                 if not entry:
                     continue
+                now = time.time()
+                if now - entry["last_pin_ts"] < PIN_MIN_INTERVAL:
+                    continue
+                entry["last_pin_ts"] = now
                 lat, lng = data.get("lat"), data.get("lng")
                 if lat is None or lng is None:
                     continue
@@ -359,6 +429,10 @@ async def websocket_handler(request):
                 entry = rooms.get(room_id, {}).get(member_id)
                 if not entry:
                     continue
+                now = time.time()
+                if now - entry["last_voice_ts"] < VOICE_MIN_INTERVAL:
+                    continue
+                entry["last_voice_ts"] = now
                 audio_b64 = data.get("audio")
                 mime = data.get("mime", "audio/webm")
                 if not audio_b64 or len(audio_b64) > MAX_VOICE_B64_CHARS:
@@ -372,6 +446,13 @@ async def websocket_handler(request):
             elif mtype == "kick" and room_id and member_id:
                 if room_owners.get(room_id) != member_id:
                     continue
+                entry = rooms.get(room_id, {}).get(member_id)
+                if not entry:
+                    continue
+                now = time.time()
+                if now - entry["last_kick_ts"] < KICK_MIN_INTERVAL:
+                    continue
+                entry["last_kick_ts"] = now
                 target_username = str(data.get("username", ""))
                 room = rooms.get(room_id, {})
                 targets = [mid for mid, e in room.items() if e["username"] == target_username and mid != member_id]
@@ -389,7 +470,7 @@ async def websocket_handler(request):
             elif mtype == "change_password" and room_id and member_id:
                 if room_owners.get(room_id) != member_id:
                     continue
-                new_password = str(data.get("password") or "")
+                new_password = str(data.get("password") or "")[:128]
                 room_passwords[room_id] = _hash_password(new_password) if new_password else None
                 await ws.send_str(json.dumps({"type": "password_changed"}))
 
@@ -419,6 +500,12 @@ async def stale_connection_reaper(app):
     while True:
         await asyncio.sleep(HEARTBEAT_INTERVAL)
         now = time.time()
+        for key in list(failed_joins.keys()):
+            recent = [t for t in failed_joins[key] if now - t < FAILED_JOIN_WINDOW_S]
+            if recent:
+                failed_joins[key] = recent
+            else:
+                failed_joins.pop(key, None)
         for room_id in list(rooms.keys()):
             for member_id in list(rooms[room_id].keys()):
                 if now - rooms[room_id][member_id]["last_seen"] > HEARTBEAT_TIMEOUT:
@@ -437,7 +524,7 @@ async def health(request):
 
 async def admin_stats(request):
     key = request.query.get("key", "")
-    if not ADMIN_KEY or key != ADMIN_KEY:
+    if not ADMIN_KEY or not hmac.compare_digest(key, ADMIN_KEY):
         return web.json_response({"error": "forbidden"}, status=403)
     total_members = sum(len(members) for members in rooms.values())
     return web.json_response({
@@ -445,6 +532,16 @@ async def admin_stats(request):
         "members": total_members,
         "uptime_s": round(time.time() - SERVER_START_TS),
     })
+
+
+@web.middleware
+async def security_headers_middleware(request, handler):
+    response = await handler(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "interest-cohort=()"
+    return response
 
 
 async def start_background_tasks(app):
@@ -461,7 +558,7 @@ async def index(request):
 
 def create_app():
     init_db()
-    app = web.Application()
+    app = web.Application(middlewares=[security_headers_middleware])
     app.router.add_get("/health", health)
     app.router.add_get("/admin/stats", admin_stats)
     app.router.add_get("/ws", websocket_handler)

@@ -863,6 +863,15 @@
     return proto + '//' + location.host + '/ws';
   }
 
+  function escapeHtml(str){
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   function haversine(lat1, lng1, lat2, lng2){
     const R = 6371000;
     const toRad = d => d * Math.PI / 180;
@@ -904,7 +913,7 @@
       markers[name].setIcon(markerIcon(isMe, color, initial));
     } else {
       markers[name] = L.marker([lat, lng], {icon: markerIcon(isMe, color, initial)})
-        .bindTooltip(name, {permanent:true, direction:'top', offset:[0,-10], className:'marker-label'})
+        .bindTooltip(escapeHtml(name), {permanent:true, direction:'top', offset:[0,-10], className:'marker-label'})
         .addTo(map);
     }
   }
@@ -951,10 +960,10 @@
         : '';
       const ownerBadgeHtml = u.is_owner ? '<span class="owner-badge">' + t('ownerBadge') + '</span>' : '';
       const kickHtml = (isOwner && !isMe)
-        ? '<a class="kick-link" href="#" data-kick="' + u.username.replace(/"/g,'&quot;') + '">' + t('kickLink') + '</a>'
+        ? '<a class="kick-link" href="#" data-kick="' + escapeHtml(u.username) + '">' + t('kickLink') + '</a>'
         : '';
       chip.innerHTML =
-        '<span class="name">' + (isMe ? u.username + t('meSuffix') : u.username) + ownerBadgeHtml + '</span>' +
+        '<span class="name">' + (isMe ? escapeHtml(u.username) + t('meSuffix') : escapeHtml(u.username)) + ownerBadgeHtml + '</span>' +
         '<span class="dist">' + distText + '</span>' +
         (metaHtml ? '<div class="meta-row">' + metaHtml + '</div>' : '') +
         navHtml + kickHtml;
@@ -1388,7 +1397,7 @@
       const eta = formatEta(dist, ownSpeedMps);
       if (eta) etaHtml = '<br/>' + t('etaLabel', {eta});
     }
-    return '<div class="pin-popup">' + t('pinPopup', {by: by}) + etaHtml +
+    return '<div class="pin-popup">' + t('pinPopup', {by: escapeHtml(by)}) + etaHtml +
       '<br/><a href="geo:' + lat + ',' + lng + '?q=' + lat + ',' + lng + '" target="_blank">' + t('navigate') + '</a>' +
       '<span class="pin-clear" onclick="window.__clearPin()">' + t('clearPin') + '</span></div>';
   }
