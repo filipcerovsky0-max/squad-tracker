@@ -262,6 +262,49 @@
   .pin-popup a{ color:var(--cyan); text-decoration:none; }
   .pin-popup .pin-clear{ color:var(--danger); margin-left:8px; cursor:pointer; }
 
+  #poll-btn, #waypoint-btn{
+    position:absolute; left:16px; z-index:1000; width:52px; height:40px; margin:0;
+    background:var(--panel-2); border:1px solid var(--line); color:var(--text-dim);
+    font-size:10px; font-family:var(--mono); border-radius:6px; padding:0;
+  }
+  #poll-btn{ bottom:158px; }
+  #waypoint-btn{ bottom:204px; }
+
+  #poll-create-panel{
+    position:absolute; inset:0; z-index:1200; background:rgba(8,11,10,0.97);
+    display:none; flex-direction:column; padding:24px; gap:10px;
+  }
+  #poll-create-panel.open{ display:flex; }
+  #poll-create-panel input{ margin:0; }
+  #poll-create-close{ position:absolute; top:14px; right:14px; width:auto; background:transparent; border:1px solid var(--line); padding:6px 12px; font-size:12px; }
+  #poll-question-input{ margin-top:20px !important; }
+
+  #poll-card{
+    position:absolute; top:52px; left:16px; right:16px; z-index:1050;
+    background:rgba(16,22,20,0.96); border:1px solid var(--signal); border-radius:6px;
+    padding:12px 14px; display:none; font-family:var(--mono);
+  }
+  #poll-card.show{ display:block; }
+  #poll-card-question{ color:var(--text); font-size:13px; margin-bottom:8px; padding-right:20px; }
+  .poll-option-row{
+    position:relative; background:var(--panel-2); border:1px solid var(--line); border-radius:3px;
+    margin-bottom:6px; padding:7px 10px; font-size:12px; color:var(--text); cursor:pointer; overflow:hidden;
+  }
+  .poll-option-row .fill{
+    position:absolute; top:0; left:0; bottom:0; background:rgba(255,180,84,0.18); z-index:0;
+  }
+  .poll-option-row .label{ position:relative; z-index:1; display:flex; justify-content:space-between; }
+  .poll-option-row.voted{ border-color:var(--signal); }
+  #poll-card-clear{ position:absolute; top:10px; right:12px; color:var(--danger); cursor:pointer; font-size:12px; }
+
+  .waypoint-marker{
+    display:flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%;
+    background:var(--panel-2); border:2px solid var(--signal); color:var(--signal);
+    font-family:var(--mono); font-size:11px; font-weight:700;
+  }
+  .waypoint-popup{ font-family:var(--mono); font-size:12px; color:var(--text); }
+  .waypoint-popup .wp-remove{ color:var(--danger); cursor:pointer; margin-left:8px; }
+
   /* ---------- TOPBAR extra icon buttons ---------- */
   /* mute lives as a checkbox in Settings now, see .setting-row */
 
@@ -288,14 +331,48 @@
   }
   .color-row span{ font-family:var(--mono); font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.08em; }
   .squad-marker .dot{ display:flex; align-items:center; justify-content:center; color:#0a0d0c; font-size:8px; font-weight:700; font-family:var(--mono); }
+  .squad-marker.signal-lost .dot{ border-style:dashed; opacity:0.6; }
+
+  #map-style-toggle{
+    position:absolute; left:16px; top:56px; z-index:1000; width:auto; margin:0;
+    padding:6px 10px; font-size:11px; background:rgba(16,22,20,0.9); border:1px solid var(--line);
+    color:var(--text-dim); font-family:var(--mono);
+  }
+  #map-style-toggle.active{ border-color:var(--cyan); color:var(--cyan); }
+
+  #gps-lost-banner{
+    position:absolute; top:52px; left:50%; transform:translateX(-50%); z-index:1050;
+    font-family:var(--mono); font-size:11px; color:var(--danger); background:rgba(16,22,20,0.95);
+    border:1px solid var(--danger); padding:6px 14px; border-radius:3px; display:none; white-space:nowrap;
+  }
+  #gps-lost-banner.show{ display:block; }
+
+  .chip.signal-lost{ opacity:0.4; }
+  .chip.signal-lost .age{ color:var(--danger); }
+
+  #compass-panel{
+    position:absolute; inset:0; z-index:1200; background:rgba(8,11,10,0.97);
+    display:none; flex-direction:column; align-items:center; justify-content:center; padding:24px; text-align:center;
+  }
+  #compass-panel.open{ display:flex; }
+  #compass-close{ position:absolute; top:14px; right:14px; width:auto; background:transparent; border:1px solid var(--line); padding:6px 12px; font-size:12px; }
+  #compass-dial{
+    position:relative; width:220px; height:220px; border-radius:50%; margin:24px 0;
+    border:2px solid var(--line); background:radial-gradient(circle, rgba(255,180,84,0.06), transparent 70%);
+  }
+  #compass-arrow{
+    position:absolute; top:50%; left:50%; width:4px; height:88px;
+    background:linear-gradient(to top, var(--signal), var(--cyan));
+    transform-origin:bottom center; transform:translate(-50%,-100%) rotate(0deg);
+    border-radius:2px; transition:transform .15s linear;
+  }
+  #compass-dial::after{
+    content:''; position:absolute; top:50%; left:50%; width:10px; height:10px; border-radius:50%;
+    background:var(--text); transform:translate(-50%,-50%);
+  }
+  #compass-distance{ font-family:var(--mono); font-size:20px; color:var(--signal); }
 
   /* ---------- APK link on join screen ---------- */
-  #apk-link{
-    display:block; text-align:center; margin-top:16px; font-family:var(--mono); font-size:11px;
-    color:var(--text-dim); text-decoration:none; border:1px solid var(--line); border-radius:3px; padding:8px;
-  }
-  #apk-link:active{ border-color:var(--signal); color:var(--signal); }
-
   /* ---------- typing indicator ---------- */
   #typing-indicator{
     font-family:var(--mono); font-size:11px; color:var(--text-dim); padding:0 16px 4px;
@@ -375,7 +452,6 @@
         <span id="t-consent-label">Souhlasim se sdilenim polohy, chatu a hlasu s ostatnimi v teto mistnosti.</span>
       </label>
       <button id="join-btn">Vstoupit</button>
-      <a id="apk-link" href="https://github.com/filipcerovsky0-max/squad-tracker-android/releases/latest" target="_blank"></a>
       <p id="join-error"></p>
     </div>
   </div>
@@ -391,12 +467,16 @@
       </div>
     </div>
     <div id="map"></div>
+    <button id="map-style-toggle" title="Satellite">SAT</button>
     <div id="map-crosshair"></div>
     <div id="alert-toast"></div>
     <div id="speaking-indicator"></div>
+    <div id="gps-lost-banner"></div>
     <p id="ptt-label">DRŽ A MLUV</p>
     <button id="ptt-btn">PTT</button>
     <button id="pin-btn" title="Sraz tady">PIN</button>
+    <button id="poll-btn" title="Poll">POLL</button>
+    <button id="waypoint-btn" title="Add stop">+STOP</button>
     <div id="hud-bottom"></div>
 
     <!-- CHAT PANEL -->
@@ -459,6 +539,34 @@
     <div id="stats-block"></div>
   </div>
 
+  <!-- POLL CREATE PANEL -->
+  <div id="poll-create-panel">
+    <button id="poll-create-close">X</button>
+    <p class="eyebrow" id="t-poll-create-title">Nova anketa</p>
+    <input id="poll-question-input" maxlength="120" />
+    <input id="poll-option-input-1" maxlength="40" />
+    <input id="poll-option-input-2" maxlength="40" />
+    <input id="poll-option-input-3" maxlength="40" />
+    <button id="poll-create-submit"></button>
+  </div>
+
+  <!-- ACTIVE POLL CARD (overlays the map while a poll is running) -->
+  <div id="poll-card">
+    <div id="poll-card-question"></div>
+    <div id="poll-card-options"></div>
+    <span id="poll-card-clear">X</span>
+  </div>
+
+  <!-- COMPASS PANEL -->
+  <div id="compass-panel">
+    <button id="compass-close">X</button>
+    <p class="eyebrow" id="compass-target-name"></p>
+    <div id="compass-dial">
+      <div id="compass-arrow"></div>
+    </div>
+    <p id="compass-distance"></p>
+  </div>
+
   <!-- SHARE PANEL -->
   <div id="share-panel">
     <button id="share-close">X</button>
@@ -498,11 +606,18 @@
       react1: 'Jdu tam', react2: 'Dorazil jsem', react3: 'Za 5 min',
       colorLabel: 'Barva znacky', settingsBtn: 'Nastaveni', settingsTitle: 'Nastaveni',
       soundChat: 'Zvuk chatu', soundVoice: 'Zvuk hlasovek', soundProximity: 'Zvuk pri priblizeni',
-      notifLabel: 'Oznameni na pozadi', changePasswordBtn: 'Zmenit heslo mistnosti', apkLinkText: 'Stahnout Android appku',
+      notifLabel: 'Oznameni na pozadi', changePasswordBtn: 'Zmenit heslo mistnosti',
       kickLink: 'Vyhodit', ownerBadge: 'ADMIN', kickedMsg: 'Byl jsi vyhozen z mistnosti.',
       typingText: '{name} pise...', replyingTo: 'Odpovidas {name}',
       statsMembers: 'Lidi v mistnosti', statsMessages: 'Zprav celkem', statsDistance: 'Ujita vzdalenost',
-      etaLabel: 'cca {eta}'
+      etaLabel: 'cca {eta}',
+      gpsLost: 'Ztrata GPS signalu, naposledy videno {time}',
+      compassBtn: 'Kompas', compassUnavailable: 'Kompas neni dostupny na tomto zarizeni',
+      pushUnavailable: 'Push notifikace nejsou na tomto zarizeni podporovany',
+      pollBtnTitle: 'Anketa', waypointBtnTitle: 'Pridat zastavku', pollCreateTitle: 'Nova anketa',
+      pollQuestionPlaceholder: 'Otazka', pollOptionPlaceholder: 'Moznost', optionalHint: 'volitelne',
+      pollCreateSubmit: 'Vytvorit anketu', pollNeedsOptions: 'Zadej otazku a alespon 2 moznosti',
+      waypointLabelPrompt: 'Nazev zastavky (nepovinne)'
     },
     en: {
       title: 'Join the squad', nameLabel: 'Your name', namePlaceholder: 'e.g. Falcon',
@@ -523,11 +638,18 @@
       react1: 'On my way', react2: "I'm here", react3: '5 min away',
       colorLabel: 'Marker color', settingsBtn: 'Settings', settingsTitle: 'Settings',
       soundChat: 'Chat sound', soundVoice: 'Voice sound', soundProximity: 'Proximity sound',
-      notifLabel: 'Background notifications', changePasswordBtn: 'Change room password', apkLinkText: 'Get the Android app',
+      notifLabel: 'Background notifications', changePasswordBtn: 'Change room password',
       kickLink: 'Kick', ownerBadge: 'ADMIN', kickedMsg: 'You were removed from the room.',
       typingText: '{name} is typing...', replyingTo: 'Replying to {name}',
       statsMembers: 'People in room', statsMessages: 'Total messages', statsDistance: 'Distance traveled',
-      etaLabel: '~{eta}'
+      etaLabel: '~{eta}',
+      gpsLost: 'GPS signal lost, last seen {time}',
+      compassBtn: 'Compass', compassUnavailable: 'Compass is not available on this device',
+      pushUnavailable: 'Push notifications are not supported on this device',
+      pollBtnTitle: 'Poll', waypointBtnTitle: 'Add stop', pollCreateTitle: 'New poll',
+      pollQuestionPlaceholder: 'Question', pollOptionPlaceholder: 'Option', optionalHint: 'optional',
+      pollCreateSubmit: 'Create poll', pollNeedsOptions: 'Enter a question and at least 2 options',
+      waypointLabelPrompt: 'Stop name (optional)'
     },
     fr: {
       title: "Rejoindre l'equipe", nameLabel: 'Ton nom', namePlaceholder: 'ex. Falcon',
@@ -548,11 +670,18 @@
       react1: "J'arrive", react2: 'Je suis la', react3: 'Dans 5 min',
       colorLabel: 'Couleur du repere', settingsBtn: 'Reglages', settingsTitle: 'Reglages',
       soundChat: 'Son du chat', soundVoice: 'Son des messages vocaux', soundProximity: 'Son de proximite',
-      notifLabel: 'Notifications en arriere-plan', changePasswordBtn: 'Changer le mot de passe', apkLinkText: "Telecharger l'appli Android",
+      notifLabel: 'Notifications en arriere-plan', changePasswordBtn: 'Changer le mot de passe',
       kickLink: 'Exclure', ownerBadge: 'ADMIN', kickedMsg: 'Tu as ete exclu de la salle.',
       typingText: '{name} ecrit...', replyingTo: 'Reponse a {name}',
       statsMembers: 'Personnes dans la salle', statsMessages: 'Total des messages', statsDistance: 'Distance parcourue',
-      etaLabel: '~{eta}'
+      etaLabel: '~{eta}',
+      gpsLost: 'Signal GPS perdu, vu pour la derniere fois a {time}',
+      compassBtn: 'Boussole', compassUnavailable: "La boussole n'est pas disponible sur cet appareil",
+      pushUnavailable: "Les notifications push ne sont pas prises en charge sur cet appareil",
+      pollBtnTitle: 'Sondage', waypointBtnTitle: 'Ajouter un arret', pollCreateTitle: 'Nouveau sondage',
+      pollQuestionPlaceholder: 'Question', pollOptionPlaceholder: 'Option', optionalHint: 'facultatif',
+      pollCreateSubmit: 'Creer le sondage', pollNeedsOptions: 'Entre une question et au moins 2 options',
+      waypointLabelPrompt: "Nom de l'arret (facultatif)"
     },
     es: {
       title: 'Unirse al equipo', nameLabel: 'Tu nombre', namePlaceholder: 'ej. Falcon',
@@ -573,11 +702,18 @@
       react1: 'Voy para alla', react2: 'Ya llegue', react3: 'En 5 min',
       colorLabel: 'Color del marcador', settingsBtn: 'Ajustes', settingsTitle: 'Ajustes',
       soundChat: 'Sonido del chat', soundVoice: 'Sonido de voz', soundProximity: 'Sonido de proximidad',
-      notifLabel: 'Notificaciones en segundo plano', changePasswordBtn: 'Cambiar contrasena de sala', apkLinkText: 'Descargar app de Android',
+      notifLabel: 'Notificaciones en segundo plano', changePasswordBtn: 'Cambiar contrasena de sala',
       kickLink: 'Expulsar', ownerBadge: 'ADMIN', kickedMsg: 'Has sido expulsado de la sala.',
       typingText: '{name} esta escribiendo...', replyingTo: 'Respondiendo a {name}',
       statsMembers: 'Personas en la sala', statsMessages: 'Mensajes totales', statsDistance: 'Distancia recorrida',
-      etaLabel: '~{eta}'
+      etaLabel: '~{eta}',
+      gpsLost: 'Senal GPS perdida, visto por ultima vez a las {time}',
+      compassBtn: 'Brujula', compassUnavailable: 'La brujula no esta disponible en este dispositivo',
+      pushUnavailable: 'Las notificaciones push no son compatibles con este dispositivo',
+      pollBtnTitle: 'Encuesta', waypointBtnTitle: 'Anadir parada', pollCreateTitle: 'Nueva encuesta',
+      pollQuestionPlaceholder: 'Pregunta', pollOptionPlaceholder: 'Opcion', optionalHint: 'opcional',
+      pollCreateSubmit: 'Crear encuesta', pollNeedsOptions: 'Escribe una pregunta y al menos 2 opciones',
+      waypointLabelPrompt: 'Nombre de la parada (opcional)'
     },
     ar: {
       title: 'انضم إلى الفريق', nameLabel: 'اسمك', namePlaceholder: 'مثال: Falcon',
@@ -598,11 +734,18 @@
       react1: 'في الطريق', react2: 'وصلت', react3: 'بعد 5 دقائق',
       colorLabel: 'لون العلامة', settingsBtn: 'الإعدادات', settingsTitle: 'الإعدادات',
       soundChat: 'صوت الدردشة', soundVoice: 'صوت الرسائل الصوتية', soundProximity: 'صوت الاقتراب',
-      notifLabel: 'إشعارات الخلفية', changePasswordBtn: 'تغيير كلمة مرور الغرفة', apkLinkText: 'تحميل تطبيق أندرويد',
+      notifLabel: 'إشعارات الخلفية', changePasswordBtn: 'تغيير كلمة مرور الغرفة',
       kickLink: 'طرد', ownerBadge: 'مسؤول', kickedMsg: 'تم إخراجك من الغرفة.',
       typingText: '{name} يكتب...', replyingTo: 'الرد على {name}',
       statsMembers: 'الأشخاص في الغرفة', statsMessages: 'إجمالي الرسائل', statsDistance: 'المسافة المقطوعة',
-      etaLabel: '~{eta}'
+      etaLabel: '~{eta}',
+      gpsLost: 'فقدت إشارة GPS، آخر ظهور {time}',
+      compassBtn: 'بوصلة', compassUnavailable: 'البوصلة غير متاحة على هذا الجهاز',
+      pushUnavailable: 'إشعارات Push غير مدعومة على هذا الجهاز',
+      pollBtnTitle: 'استطلاع', waypointBtnTitle: 'إضافة محطة', pollCreateTitle: 'استطلاع جديد',
+      pollQuestionPlaceholder: 'سؤال', pollOptionPlaceholder: 'خيار', optionalHint: 'اختياري',
+      pollCreateSubmit: 'إنشاء استطلاع', pollNeedsOptions: 'أدخل سؤالاً وخيارين على الأقل',
+      waypointLabelPrompt: 'اسم المحطة (اختياري)'
     },
     hi: {
       title: 'दल में शामिल हों', nameLabel: 'आपका नाम', namePlaceholder: 'जैसे Falcon',
@@ -623,11 +766,18 @@
       react1: 'आ रहा हूं', react2: 'पहुंच गया', react3: '5 मिनट में',
       colorLabel: 'मार्कर रंग', settingsBtn: 'सेटिंग्स', settingsTitle: 'सेटिंग्स',
       soundChat: 'चैट ध्वनि', soundVoice: 'वॉइस ध्वनि', soundProximity: 'नज़दीकी ध्वनि',
-      notifLabel: 'बैकग्राउंड सूचनाएं', changePasswordBtn: 'रूम पासवर्ड बदलें', apkLinkText: 'Android ऐप डाउनलोड करें',
+      notifLabel: 'बैकग्राउंड सूचनाएं', changePasswordBtn: 'रूम पासवर्ड बदलें',
       kickLink: 'निकालें', ownerBadge: 'एडमिन', kickedMsg: 'आपको रूम से हटा दिया गया है।',
       typingText: '{name} टाइप कर रहा है...', replyingTo: '{name} को जवाब',
       statsMembers: 'रूम में लोग', statsMessages: 'कुल संदेश', statsDistance: 'तय की गई दूरी',
-      etaLabel: '~{eta}'
+      etaLabel: '~{eta}',
+      gpsLost: 'GPS सिग्नल खो गया, आखिरी बार {time} पर देखा गया',
+      compassBtn: 'दिशा सूचक', compassUnavailable: 'इस डिवाइस पर कंपास उपलब्ध नहीं है',
+      pushUnavailable: 'इस डिवाइस पर पुश नोटिफिकेशन समर्थित नहीं हैं',
+      pollBtnTitle: 'पोल', waypointBtnTitle: 'स्टॉप जोड़ें', pollCreateTitle: 'नया पोल',
+      pollQuestionPlaceholder: 'सवाल', pollOptionPlaceholder: 'विकल्प', optionalHint: 'वैकल्पिक',
+      pollCreateSubmit: 'पोल बनाएं', pollNeedsOptions: 'एक सवाल और कम से कम 2 विकल्प दर्ज करें',
+      waypointLabelPrompt: 'स्टॉप का नाम (वैकल्पिक)'
     }
   };
 
@@ -682,7 +832,14 @@
     document.getElementById('t-sound-proximity').textContent = t('soundProximity');
     document.getElementById('t-notif-label').textContent = t('notifLabel');
     changePasswordBtn.textContent = t('changePasswordBtn');
-    apkLink.textContent = t('apkLinkText');
+    pollBtn.title = t('pollBtnTitle');
+    waypointBtn.title = t('waypointBtnTitle');
+    document.getElementById('t-poll-create-title').textContent = t('pollCreateTitle');
+    pollQuestionInput.placeholder = t('pollQuestionPlaceholder');
+    pollOptionInput1.placeholder = t('pollOptionPlaceholder') + ' 1';
+    pollOptionInput2.placeholder = t('pollOptionPlaceholder') + ' 2';
+    pollOptionInput3.placeholder = t('pollOptionPlaceholder') + ' 3 (' + t('optionalHint') + ')';
+    pollCreateSubmit.textContent = t('pollCreateSubmit');
     document.querySelectorAll('#lang-switch button').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.lang === currentLang);
     });
@@ -731,7 +888,6 @@
   const qr2 = document.getElementById('qr-2');
   const qr3 = document.getElementById('qr-3');
   const avatarColor = document.getElementById('avatar-color');
-  const apkLink = document.getElementById('apk-link');
   const settingsToggle = document.getElementById('settings-toggle');
   const settingsPanel = document.getElementById('settings-panel');
   const settingsClose = document.getElementById('settings-close');
@@ -749,6 +905,26 @@
   const replyCancel = document.getElementById('reply-cancel');
   const chatImageInput = document.getElementById('chat-image-input');
   const chatImageBtn = document.getElementById('chat-image-btn');
+  const mapStyleToggle = document.getElementById('map-style-toggle');
+  const gpsLostBanner = document.getElementById('gps-lost-banner');
+  const compassPanel = document.getElementById('compass-panel');
+  const compassClose = document.getElementById('compass-close');
+  const compassTargetName = document.getElementById('compass-target-name');
+  const compassArrow = document.getElementById('compass-arrow');
+  const compassDistance = document.getElementById('compass-distance');
+  const pollBtn = document.getElementById('poll-btn');
+  const waypointBtn = document.getElementById('waypoint-btn');
+  const pollCreatePanel = document.getElementById('poll-create-panel');
+  const pollCreateClose = document.getElementById('poll-create-close');
+  const pollQuestionInput = document.getElementById('poll-question-input');
+  const pollOptionInput1 = document.getElementById('poll-option-input-1');
+  const pollOptionInput2 = document.getElementById('poll-option-input-2');
+  const pollOptionInput3 = document.getElementById('poll-option-input-3');
+  const pollCreateSubmit = document.getElementById('poll-create-submit');
+  const pollCard = document.getElementById('poll-card');
+  const pollCardQuestion = document.getElementById('poll-card-question');
+  const pollCardOptions = document.getElementById('poll-card-options');
+  const pollCardClear = document.getElementById('poll-card-clear');
 
   applyTranslations();
 
@@ -805,12 +981,72 @@
     localStorage.setItem('sq_sound_proximity', soundProximityOn ? 'on' : 'off');
   });
 
-  notifToggle.addEventListener('change', () => {
-    if (notifToggle.checked && 'Notification' in window && Notification.permission !== 'granted'){
-      Notification.requestPermission().then((perm) => {
-        if (perm !== 'granted') notifToggle.checked = false;
-      });
+  // Persisted per-device id used to target push notifications at this exact
+  // device (survives app reload/reinstall as long as browser storage persists).
+  let deviceId = localStorage.getItem('sq_device_id');
+  if (!deviceId){
+    deviceId = (crypto.randomUUID ? crypto.randomUUID() : 'dev-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+    localStorage.setItem('sq_device_id', deviceId);
+  }
+  let swRegistration = null;
+  const pushWasEnabled = localStorage.getItem('sq_push_enabled') === 'on';
+  notifToggle.checked = pushWasEnabled;
+
+  function urlBase64ToUint8Array(base64String){
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; i++) outputArray[i] = rawData.charCodeAt(i);
+    return outputArray;
+  }
+
+  async function subscribeToPush(){
+    if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)){
+      showToast(t('pushUnavailable'));
+      notifToggle.checked = false;
+      return;
     }
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted'){
+      notifToggle.checked = false;
+      return;
+    }
+    try {
+      if (!swRegistration) swRegistration = await navigator.serviceWorker.ready;
+      const res = await fetch('/vapid-public-key');
+      const info = await res.json();
+      if (!info.enabled){
+        localStorage.setItem('sq_push_enabled', 'on'); // background-tab notifications still work via notifyBackground()
+        return;
+      }
+      let sub = await swRegistration.pushManager.getSubscription();
+      if (!sub){
+        sub = await swRegistration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(info.key),
+        });
+      }
+      localStorage.setItem('sq_push_enabled', 'on');
+      if (ws && ws.readyState === WebSocket.OPEN){
+        ws.send(JSON.stringify({type:'push_subscribe', device_id: deviceId, subscription: sub.toJSON()}));
+      }
+    } catch (e){
+      notifToggle.checked = false;
+      localStorage.setItem('sq_push_enabled', 'off');
+    }
+  }
+
+  function unsubscribeFromPush(){
+    localStorage.setItem('sq_push_enabled', 'off');
+    if (ws && ws.readyState === WebSocket.OPEN){
+      ws.send(JSON.stringify({type:'push_unsubscribe', device_id: deviceId}));
+    }
+  }
+
+  notifToggle.addEventListener('change', () => {
+    if (notifToggle.checked) subscribeToPush();
+    else unsubscribeFromPush();
   });
 
   function notifyBackground(title, body){
@@ -855,7 +1091,7 @@
   });
 
   if ('serviceWorker' in navigator){
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.register('/sw.js').then((reg) => { swRegistration = reg; }).catch(() => {});
   }
 
   function wsUrl(){
@@ -894,25 +1130,25 @@
     showSpeaking._t = setTimeout(()=>speakingIndicator.classList.remove('show'), 2000);
   }
 
-  function markerIcon(isMe, color, initial){
+  function markerIcon(isMe, color, initial, signalLost){
     const bg = color || (isMe ? 'var(--signal)' : 'var(--cyan)');
     return L.divIcon({
       className: '',
-      html: '<div class="squad-marker' + (isMe?' me':'') + '"><div class="ring"></div>' +
+      html: '<div class="squad-marker' + (isMe?' me':'') + (signalLost?' signal-lost':'') + '"><div class="ring"></div>' +
         '<div class="dot" style="background:' + bg + '">' + (initial || '') + '</div></div>',
       iconSize: [16,16],
       iconAnchor: [8,8]
     });
   }
 
-  function upsertMarker(name, lat, lng, isMe, color){
+  function upsertMarker(name, lat, lng, isMe, color, signalLost){
     lastKnown[name] = {lat, lng};
     const initial = name ? name.charAt(0).toUpperCase() : '';
     if (markers[name]){
       markers[name].setLatLng([lat, lng]);
-      markers[name].setIcon(markerIcon(isMe, color, initial));
+      markers[name].setIcon(markerIcon(isMe, color, initial, signalLost));
     } else {
-      markers[name] = L.marker([lat, lng], {icon: markerIcon(isMe, color, initial)})
+      markers[name] = L.marker([lat, lng], {icon: markerIcon(isMe, color, initial, signalLost)})
         .bindTooltip(escapeHtml(name), {permanent:true, direction:'top', offset:[0,-10], className:'marker-label'})
         .addTo(map);
     }
@@ -935,13 +1171,74 @@
     return Math.round(etaS / 60) + 'min';
   }
 
+  const SIGNAL_LOST_THRESHOLD_S = 120;
+
+  // ---------- COMPASS ----------
+  let compassTarget = null;
+  let compassHeading = 0;
+
+  function bearingTo(lat1, lng1, lat2, lng2){
+    const toRad = d => d * Math.PI / 180, toDeg = r => r * 180 / Math.PI;
+    const dLng = toRad(lng2 - lng1);
+    const y = Math.sin(dLng) * Math.cos(toRad(lat2));
+    const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) - Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLng);
+    return (toDeg(Math.atan2(y, x)) + 360) % 360;
+  }
+
+  function updateCompassArrow(){
+    if (!compassTarget || !selfLatLng) return;
+    const bearing = bearingTo(selfLatLng.lat, selfLatLng.lng, compassTarget.lat, compassTarget.lng);
+    const angle = (bearing - compassHeading + 360) % 360;
+    compassArrow.style.transform = 'rotate(' + angle + 'deg)';
+    const dist = haversine(selfLatLng.lat, selfLatLng.lng, compassTarget.lat, compassTarget.lng);
+    compassDistance.textContent = dist < 1000 ? Math.round(dist) + ' m' : (dist / 1000).toFixed(1) + ' km';
+  }
+
+  function handleOrientation(e){
+    let heading;
+    if (typeof e.webkitCompassHeading === 'number'){
+      heading = e.webkitCompassHeading;
+    } else if (e.alpha != null){
+      heading = 360 - e.alpha;
+    } else {
+      return;
+    }
+    compassHeading = heading;
+    updateCompassArrow();
+  }
+
+  async function openCompass(lat, lng, name){
+    compassTarget = {lat, lng, name};
+    compassTargetName.textContent = name;
+    compassPanel.classList.add('open');
+    updateCompassArrow();
+
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
+      try {
+        const perm = await DeviceOrientationEvent.requestPermission();
+        if (perm !== 'granted'){ showToast(t('compassUnavailable')); return; }
+      } catch (e){ showToast(t('compassUnavailable')); return; }
+    }
+    const eventName = 'ondeviceorientationabsolute' in window ? 'deviceorientationabsolute' : 'deviceorientation';
+    window.addEventListener(eventName, handleOrientation);
+  }
+
+  function closeCompass(){
+    compassPanel.classList.remove('open');
+    compassTarget = null;
+    window.removeEventListener('deviceorientation', handleOrientation);
+    window.removeEventListener('deviceorientationabsolute', handleOrientation);
+  }
+  compassClose.addEventListener('click', closeCompass);
+
   function renderHud(users){
     hudBottom.innerHTML = '';
     users.forEach(u => {
       const chip = document.createElement('div');
       const isMe = u.username === username;
-      const isStale = !isMe && u.age_s != null && u.age_s > 30;
-      chip.className = 'chip' + (isMe ? ' self' : '') + (isStale ? ' stale' : '');
+      const isSignalLost = !isMe && u.age_s != null && u.age_s > SIGNAL_LOST_THRESHOLD_S;
+      const isStale = !isMe && !isSignalLost && u.age_s != null && u.age_s > 30;
+      chip.className = 'chip' + (isMe ? ' self' : '') + (isStale ? ' stale' : '') + (isSignalLost ? ' signal-lost' : '');
       let distText = '-';
       let distMeters = null;
       if (!isMe && selfLatLng && u.lat != null){
@@ -950,13 +1247,19 @@
       }
       let metaHtml = '';
       if (u.battery != null) metaHtml += '<span class="battery">BAT ' + u.battery + '%</span>';
-      if (isStale) metaHtml += '<span class="age">' + formatAge(u.age_s) + '</span>';
+      if (isSignalLost){
+        const lastTime = new Date(Date.now() - u.age_s * 1000).toLocaleTimeString().slice(0,5);
+        metaHtml += '<span class="age">' + t('gpsLost', {time: lastTime}) + '</span>';
+      } else if (isStale){
+        metaHtml += '<span class="age">' + formatAge(u.age_s) + '</span>';
+      }
       if (!isMe && distMeters != null && u.speed_mps){
         const eta = formatEta(distMeters, u.speed_mps);
         if (eta) metaHtml += '<span class="age">' + t('etaLabel', {eta}) + '</span>';
       }
       const navHtml = (!isMe && u.lat != null)
-        ? '<a class="nav-link" href="geo:' + u.lat + ',' + u.lng + '?q=' + u.lat + ',' + u.lng + '" target="_blank">' + t('navigate') + '</a>'
+        ? '<a class="nav-link" href="geo:' + u.lat + ',' + u.lng + '?q=' + u.lat + ',' + u.lng + '" target="_blank">' + t('navigate') + '</a>' +
+          '<a class="nav-link compass-link" href="#" data-compass-lat="' + u.lat + '" data-compass-lng="' + u.lng + '" data-compass-name="' + escapeHtml(u.username) + '">' + t('compassBtn') + '</a>'
         : '';
       const ownerBadgeHtml = u.is_owner ? '<span class="owner-badge">' + t('ownerBadge') + '</span>' : '';
       const kickHtml = (isOwner && !isMe)
@@ -975,6 +1278,12 @@
         if (ws && ws.readyState === WebSocket.OPEN){
           ws.send(JSON.stringify({type:'kick', username: el.dataset.kick}));
         }
+      });
+    });
+    hudBottom.querySelectorAll('.compass-link').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        openCompass(parseFloat(el.dataset.compassLat), parseFloat(el.dataset.compassLng), el.dataset.compassName);
       });
     });
   }
@@ -1269,7 +1578,7 @@
     ws.onopen = () => {
       reconnectDelay = 1000;
       statusDot.classList.remove('offline','pulse');
-      ws.send(JSON.stringify({type:'join', username, room, password: roomPassword, color: avatarColor.value}));
+      ws.send(JSON.stringify({type:'join', username, room, password: roomPassword, color: avatarColor.value, device_id: deviceId}));
     };
 
     ws.onmessage = (evt) => {
@@ -1288,6 +1597,9 @@
           requestWakeLock();
         }
         startGeolocation();
+        if (pushWasEnabled) subscribeToPush();
+      } else if (msg.type === 'push_subscribed'){
+        // server confirmed; nothing else to do, subscription is already active client-side
       } else if (msg.type === 'join_error'){
         joinBtn.disabled = false;
         joinError.textContent = t('wrongPassword');
@@ -1308,7 +1620,12 @@
       } else if (msg.type === 'presence'){
         const activeNames = new Set(msg.users.map(u => u.username));
         msg.users.forEach(u => {
-          if (u.lat != null) upsertMarker(u.username, u.lat, u.lng, u.username === username, u.color);
+          if (u.lat != null) upsertMarker(u.username, u.lat, u.lng, u.username === username, u.color, u.username !== username && u.age_s != null && u.age_s > SIGNAL_LOST_THRESHOLD_S);
+          if (compassTarget && u.username === compassTarget.name && u.lat != null){
+            compassTarget.lat = u.lat;
+            compassTarget.lng = u.lng;
+            updateCompassArrow();
+          }
           if (u.username === username) ownSpeedMps = u.speed_mps;
         });
         removeStaleMarkers(activeNames);
@@ -1339,6 +1656,12 @@
         setPinMarker(msg.lat, msg.lng, msg.by);
       } else if (msg.type === 'pin_clear'){
         clearPinMarker();
+      } else if (msg.type === 'poll'){
+        renderPollCard(msg);
+      } else if (msg.type === 'poll_clear'){
+        hidePollCard();
+      } else if (msg.type === 'waypoints'){
+        renderWaypoints(msg.waypoints);
       }
     };
 
@@ -1355,16 +1678,35 @@
     ws.onerror = () => { ws.close(); };
   }
 
+  let lastFixTimestamp = null;
+  let signalLostInterval = null;
+
+  function checkOwnSignalLoss(){
+    if (lastFixTimestamp == null) return;
+    const ageS = (Date.now() - lastFixTimestamp) / 1000;
+    if (ageS > 120){
+      const lastTime = new Date(lastFixTimestamp).toLocaleTimeString().slice(0,5);
+      gpsLostBanner.textContent = t('gpsLost', {time: lastTime});
+      gpsLostBanner.classList.add('show');
+    } else {
+      gpsLostBanner.classList.remove('show');
+    }
+  }
+
   function startGeolocation(){
     if (watchId !== null) return;
     if (!navigator.geolocation){
       showToast(t('geoUnavailable'));
       return;
     }
+    signalLostInterval = setInterval(checkOwnSignalLoss, 15000);
     watchId = navigator.geolocation.watchPosition(
       (pos) => {
         const {latitude, longitude} = pos.coords;
         selfLatLng = {lat:latitude, lng:longitude};
+        lastFixTimestamp = Date.now();
+        gpsLostBanner.classList.remove('show');
+        if (compassTarget) updateCompassArrow();
         if (map._initialCentered !== true){
           map.setView([latitude, longitude], 16);
           map._initialCentered = true;
@@ -1375,15 +1717,36 @@
           ws.send(JSON.stringify(payload));
         }
       },
-      (err) => { showToast(t('geoError', {err: err.message})); },
+      (err) => { showToast(t('geoError', {err: err.message})); checkOwnSignalLoss(); },
       { enableHighAccuracy:true, maximumAge:2000, timeout:15000 }
     );
   }
 
+  let streetLayer = null;
+  let satelliteLayer = null;
+  let satelliteOn = localStorage.getItem('sq_satellite') === 'on';
+
   function initMap(){
     map = L.map('map', {zoomControl:false, attributionControl:false}).setView([49.47,17.11], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19}).addTo(map);
+    streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19});
+    satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:19});
+    (satelliteOn ? satelliteLayer : streetLayer).addTo(map);
+    mapStyleToggle.classList.toggle('active', satelliteOn);
   }
+
+  function toggleMapStyle(){
+    satelliteOn = !satelliteOn;
+    localStorage.setItem('sq_satellite', satelliteOn ? 'on' : 'off');
+    if (satelliteOn){
+      map.removeLayer(streetLayer);
+      satelliteLayer.addTo(map);
+    } else {
+      map.removeLayer(satelliteLayer);
+      streetLayer.addTo(map);
+    }
+    mapStyleToggle.classList.toggle('active', satelliteOn);
+  }
+  mapStyleToggle.addEventListener('click', toggleMapStyle);
 
   // ---------- MEET-HERE PIN ----------
   window.__clearPin = () => {
@@ -1442,6 +1805,111 @@
       ws.send(JSON.stringify({type:'pin', lat: center.lat, lng: center.lng}));
     }
   });
+
+  // ---------- POLL ----------
+  pollBtn.addEventListener('click', () => {
+    pollQuestionInput.value = '';
+    pollOptionInput1.value = '';
+    pollOptionInput2.value = '';
+    pollOptionInput3.value = '';
+    pollCreatePanel.classList.add('open');
+  });
+  pollCreateClose.addEventListener('click', () => pollCreatePanel.classList.remove('open'));
+  pollCreateSubmit.addEventListener('click', () => {
+    const question = pollQuestionInput.value.trim();
+    const options = [pollOptionInput1.value.trim(), pollOptionInput2.value.trim(), pollOptionInput3.value.trim()]
+      .filter(o => o.length > 0);
+    if (!question || options.length < 2){
+      showToast(t('pollNeedsOptions'));
+      return;
+    }
+    if (!ws || ws.readyState !== WebSocket.OPEN){
+      showToast(t('notConnected'));
+      return;
+    }
+    ws.send(JSON.stringify({type:'poll_create', question, options}));
+    pollCreatePanel.classList.remove('open');
+  });
+
+  let activePoll = null;
+
+  function renderPollCard(poll){
+    activePoll = poll;
+    pollCardQuestion.textContent = poll.question;
+    pollCardOptions.innerHTML = '';
+    const total = poll.total_votes || 0;
+    poll.options.forEach((opt, idx) => {
+      const count = poll.counts[idx] || 0;
+      const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+      const row = document.createElement('div');
+      row.className = 'poll-option-row';
+      row.innerHTML =
+        '<div class="fill" style="width:' + pct + '%"></div>' +
+        '<div class="label"><span>' + escapeHtml(opt) + '</span><span>' + count + ' (' + pct + '%)</span></div>';
+      row.addEventListener('click', () => {
+        if (ws && ws.readyState === WebSocket.OPEN){
+          ws.send(JSON.stringify({type:'poll_vote', option: idx}));
+        }
+      });
+      pollCardOptions.appendChild(row);
+    });
+    pollCardClear.style.display = (poll.by === username || isOwner) ? 'block' : 'none';
+    pollCard.classList.add('show');
+  }
+
+  function hidePollCard(){
+    activePoll = null;
+    pollCard.classList.remove('show');
+  }
+
+  pollCardClear.addEventListener('click', () => {
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({type:'poll_clear'}));
+  });
+
+  // ---------- WAYPOINTS / ROUTE ----------
+  let waypointMarkers = [];
+  let waypointLine = null;
+
+  waypointBtn.addEventListener('click', () => {
+    if (!map){
+      showToast(t('geoUnavailable'));
+      return;
+    }
+    const label = (window.prompt(t('waypointLabelPrompt')) || '').trim().slice(0, 40);
+    const center = map.getCenter();
+    if (ws && ws.readyState === WebSocket.OPEN){
+      ws.send(JSON.stringify({type:'waypoint_add', lat: center.lat, lng: center.lng, label}));
+    }
+  });
+
+  window.__removeWaypoint = (id) => {
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({type:'waypoint_remove', id}));
+  };
+
+  function renderWaypoints(waypoints){
+    waypointMarkers.forEach(m => map.removeLayer(m));
+    waypointMarkers = [];
+    if (waypointLine){ map.removeLayer(waypointLine); waypointLine = null; }
+    if (!waypoints || waypoints.length === 0) return;
+
+    waypoints.forEach((wp, idx) => {
+      const icon = L.divIcon({
+        className: '',
+        html: '<div class="waypoint-marker">' + (idx + 1) + '</div>',
+        iconSize: [22, 22],
+        iconAnchor: [11, 11],
+      });
+      const label = wp.label ? escapeHtml(wp.label) : t('waypointBtnTitle') + ' ' + (idx + 1);
+      const popupHtml = '<div class="waypoint-popup">' + label +
+        '<br/><a href="geo:' + wp.lat + ',' + wp.lng + '?q=' + wp.lat + ',' + wp.lng + '" target="_blank">' + t('navigate') + '</a>' +
+        '<span class="wp-remove" onclick="window.__removeWaypoint(' + wp.id + ')">' + t('clearPin') + '</span></div>';
+      const marker = L.marker([wp.lat, wp.lng], {icon}).bindPopup(popupHtml).addTo(map);
+      waypointMarkers.push(marker);
+    });
+    if (waypoints.length > 1 && L.polyline){
+      waypointLine = L.polyline(waypoints.map(w => [w.lat, w.lng]), {color: 'var(--signal)', weight: 2, dashArray: '4,6'}).addTo(map);
+    }
+  }
 
   // ---------- MUTE TOGGLE (persisted, lives inside Settings) ----------
   voiceMuted = localStorage.getItem('sq_voice_muted') === 'on';
