@@ -168,8 +168,8 @@
   }
   #alert-toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 
-  .squad-marker{ position:relative; width:16px; height:16px; }
-  .squad-marker .dot{ width:12px; height:12px; border-radius:50%; background:var(--cyan); border:2px solid #05141a; }
+  .squad-marker{ position:relative; width:30px; height:30px; }
+  .squad-marker .dot{ width:26px; height:26px; border-radius:50%; background:var(--cyan); border:3px solid #05141a; }
   .squad-marker.me .dot{ background:var(--signal); border-color:#1a1204; }
   .squad-marker .dot.avatar-dot{ object-fit:cover; background:#05141a; }
   .squad-marker .ring{
@@ -179,8 +179,8 @@
   .squad-marker.me .ring{ border-color:var(--signal); }
   @keyframes ring{ 0%{ transform:scale(0.4); opacity:.7;} 100%{ transform:scale(1.8); opacity:0;} }
   .marker-label{
-    font-family:var(--mono); font-size:10px; color:var(--text); background:rgba(10,13,12,0.85);
-    padding:1px 5px; border-radius:2px; white-space:nowrap;
+    font-family:var(--mono); font-size:12px; font-weight:600; color:var(--text); background:rgba(10,13,12,0.85);
+    padding:2px 7px; border-radius:3px; white-space:nowrap;
   }
 
   /* ---------- WALKIE-TALKIE ---------- */
@@ -346,7 +346,7 @@
     border:1px solid var(--line); border-radius:3px; cursor:pointer;
   }
   .color-row span{ font-family:var(--mono); font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.08em; }
-  .squad-marker .dot{ display:flex; align-items:center; justify-content:center; color:#0a0d0c; font-size:8px; font-weight:700; font-family:var(--mono); }
+  .squad-marker .dot{ display:flex; align-items:center; justify-content:center; color:#0a0d0c; font-size:14px; font-weight:700; font-family:var(--mono); }
   .squad-marker.signal-lost .dot{ border-style:dashed; opacity:0.6; }
 
   #map-style-toggle{
@@ -381,9 +381,9 @@
     width:auto; margin:0; padding:8px 10px; background:transparent; border:1px solid var(--line); color:var(--text-dim); font-size:11px;
   }
   .squad-marker .vehicle-badge{
-    position:absolute; bottom:-4px; right:-4px; width:14px; height:14px; border-radius:50%;
+    position:absolute; bottom:-4px; right:-4px; width:18px; height:18px; border-radius:50%;
     background:var(--signal); color:#0a0d0c; display:flex; align-items:center; justify-content:center;
-    border:1px solid #1a1204;
+    border:2px solid #1a1204;
   }
   .squad-marker.me .vehicle-badge{ background:var(--signal); }
   .squad-marker:not(.me) .vehicle-badge{ background:var(--cyan); border-color:#05141a; }
@@ -2019,13 +2019,13 @@
       ? '<img class="dot avatar-dot" src="' + escapeHtml(avatar) + '" alt="" />'
       : '<div class="dot" style="background:' + bg + '">' + (initial || '') + '</div>';
     const showBadge = vehicle && VEHICLE_ICONS[vehicle] && speedMps != null && speedMps > VEHICLE_SPEED_THRESHOLD_MPS;
-    const badge = showBadge ? '<div class="vehicle-badge">' + VEHICLE_ICONS[vehicle].replace(/width="16" height="16"/, 'width="9" height="9"') + '</div>' : '';
+    const badge = showBadge ? '<div class="vehicle-badge">' + VEHICLE_ICONS[vehicle].replace(/width="16" height="16"/, 'width="11" height="11"') + '</div>' : '';
     return L.divIcon({
       className: '',
       html: '<div class="squad-marker' + (isMe?' me':'') + (signalLost?' signal-lost':'') + '"><div class="ring"></div>' +
         inner + badge + '</div>',
-      iconSize: [16,16],
-      iconAnchor: [8,8]
+      iconSize: [30,30],
+      iconAnchor: [15,15]
     });
   }
 
@@ -2037,7 +2037,7 @@
       markers[name].setIcon(markerIcon(isMe, color, initial, signalLost, avatar, vehicle, speedMps));
     } else {
       markers[name] = L.marker([lat, lng], {icon: markerIcon(isMe, color, initial, signalLost, avatar, vehicle, speedMps)})
-        .bindTooltip(escapeHtml(name), {permanent:true, direction:'top', offset:[0,-10], className:'marker-label'})
+        .bindTooltip(escapeHtml(name), {permanent:true, direction:'top', offset:[0,-16], className:'marker-label'})
         .addTo(map);
     }
   }
