@@ -511,6 +511,13 @@
     width:100%; background:transparent; border:1px solid var(--cyan); color:var(--cyan); font-size:12px; padding:10px;
   }
 
+  #support-link{
+    position:absolute; bottom:14px; right:16px; z-index:5;
+    font-family:var(--mono); font-size:11px; color:var(--text-dim); opacity:0.55;
+    text-decoration:none; letter-spacing:.02em;
+  }
+  #support-link:hover{ opacity:0.9; color:var(--cyan); }
+
   /* ---------- avatar crop panel ---------- */
   #avatar-crop-panel{
     position:absolute; inset:0; z-index:1400; background:rgba(6,8,7,0.98);
@@ -535,6 +542,12 @@
   #crop-btn-row{ display:flex; gap:10px; width:260px; margin-top:20px; }
   #crop-btn-row button{ flex:1; margin:0; }
   #crop-cancel-btn{ background:transparent; border:1px solid var(--line); color:var(--text-dim); padding:11px; font-size:12px; }
+  #crop-close-x{
+    position:absolute; top:14px; right:14px; width:32px; height:32px; margin:0; padding:0;
+    background:transparent; border:1px solid var(--danger, #ff5d5d); color:var(--danger, #ff5d5d);
+    font-size:16px; line-height:1; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  }
+  #crop-close-x:hover{ background:var(--danger, #ff5d5d); color:#0a0d0c; }
   #crop-confirm-btn{ background:var(--signal); color:#0a0d0c; font-weight:700; border:none; padding:11px; font-size:12px; }
 </style>
 </head>
@@ -552,6 +565,7 @@
       <button type="button" data-lang="ar">AR</button>
       <button type="button" data-lang="hi">HI</button>
     </div>
+    <a id="support-link" href="mailto:squad.tracker.support@gmail.com?subject=Squad%20Tracker%20-%20pomoc"></a>
     <div class="join-card">
       <p class="eyebrow">// squad tracker</p>
       <h1 id="t-title">Připojit se k jednotce</h1>
@@ -699,6 +713,7 @@
 
   <!-- AVATAR CROP PANEL -->
   <div id="avatar-crop-panel">
+    <button type="button" id="crop-close-x">✕</button>
     <p class="eyebrow" id="t-crop-title"></p>
     <div id="crop-stage">
       <img id="crop-image" alt="" draggable="false" />
@@ -874,6 +889,9 @@
       cropTitle: 'Uprav profilovku',
       cropCancel: 'Zrusit',
       cropConfirm: 'Pouzit',
+      verifyExpiredError: 'Kod vyprsel. Klikni na \'Poslat kod znovu\'.',
+      verifyTooManyError: 'Prilis mnoho spatnych pokusu. Klikni na \'Poslat kod znovu\' pro novy kod.',
+      supportLinkText: 'Potrebujes pomoct?',
       passwordTooShort: 'Heslo musi mit alespon 8 znaku.'
     },
     en: {
@@ -943,6 +961,9 @@
       cropTitle: 'Edit profile picture',
       cropCancel: 'Cancel',
       cropConfirm: 'Use this',
+      verifyExpiredError: 'Code expired. Tap \'Resend code\'.',
+      verifyTooManyError: 'Too many wrong attempts. Tap \'Resend code\' for a new one.',
+      supportLinkText: 'Need help?',
       passwordTooShort: 'Password must be at least 8 characters.'
     },
     fr: {
@@ -1012,6 +1033,9 @@
       cropTitle: 'Modifier la photo de profil',
       cropCancel: 'Annuler',
       cropConfirm: 'Utiliser',
+      verifyExpiredError: 'Code expire. Appuie sur \'Renvoyer le code\'.',
+      verifyTooManyError: 'Trop de tentatives incorrectes. Appuie sur \'Renvoyer le code\'.',
+      supportLinkText: 'Besoin d\'aide ?',
       passwordTooShort: 'Le mot de passe doit contenir au moins 8 caracteres.'
     },
     es: {
@@ -1081,6 +1105,9 @@
       cropTitle: 'Editar foto de perfil',
       cropCancel: 'Cancelar',
       cropConfirm: 'Usar',
+      verifyExpiredError: 'Codigo expirado. Toca \'Reenviar codigo\'.',
+      verifyTooManyError: 'Demasiados intentos incorrectos. Toca \'Reenviar codigo\'.',
+      supportLinkText: '¿Necesitas ayuda?',
       passwordTooShort: 'La contrasena debe tener al menos 8 caracteres.'
     },
     ar: {
@@ -1150,6 +1177,9 @@
       cropTitle: 'تعديل صورة الملف الشخصي',
       cropCancel: 'الغاء',
       cropConfirm: 'استخدام',
+      verifyExpiredError: 'انتهت صلاحية الرمز. اضغط على \'اعادة ارسال الرمز\'.',
+      verifyTooManyError: 'عدد كبير جدا من المحاولات الخاطئة. اضغط على \'اعادة ارسال الرمز\'.',
+      supportLinkText: 'تحتاج مساعدة؟',
       passwordTooShort: 'يجب أن تكون كلمة المرور 8 أحرف على الأقل.'
     },
     hi: {
@@ -1219,6 +1249,9 @@
       cropTitle: 'प्रोफ़ाइल फोटो संपादित करें',
       cropCancel: 'रद्द करें',
       cropConfirm: 'उपयोग करें',
+      verifyExpiredError: 'कोड समय समाप्त हो गया। \'कोड फिर से भेजें\' पर टैप करें।',
+      verifyTooManyError: 'बहुत सारे गलत प्रयास। नया कोड पाने के लिए \'कोड फिर से भेजें\' पर टैप करें।',
+      supportLinkText: 'मदद चाहिए?',
       passwordTooShort: 'पासवर्ड कम से कम 8 अक्षर का होना चाहिए।'
     }
   };
@@ -1315,6 +1348,7 @@
     document.getElementById('t-crop-title').textContent = t('cropTitle');
     document.getElementById('crop-cancel-btn').textContent = t('cropCancel');
     document.getElementById('crop-confirm-btn').textContent = t('cropConfirm');
+    document.getElementById('support-link').textContent = t('supportLinkText');
     if (currentAccount) {
       document.getElementById('account-welcome-text').textContent = t('welcomeBack', {name: currentAccount.username});
     }
@@ -1685,7 +1719,14 @@
         method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'same-origin',
         body: JSON.stringify({user_id: pendingVerifyUserId, code: verifyCode.value.trim()})
       });
-      if (!r.ok){ verifyError.textContent = t('verifyError'); return; }
+      if (!r.ok){
+        let reason = 'wrong';
+        try { reason = (await r.json()).error || 'wrong'; } catch (e) {}
+        if (reason === 'expired') verifyError.textContent = t('verifyExpiredError');
+        else if (reason === 'too_many_attempts') verifyError.textContent = t('verifyTooManyError');
+        else verifyError.textContent = t('verifyError');
+        return;
+      }
       await checkAuth();
       closeAccountPanel();
     } catch (err) { verifyError.textContent = t('verifyError'); }
@@ -1693,12 +1734,12 @@
 
   resendCodeLink.addEventListener('click', async () => {
     try {
-      await fetch('/auth/resend-code', {
+      const r = await fetch('/auth/resend-code', {
         method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'same-origin',
         body: JSON.stringify({user_id: pendingVerifyUserId})
       });
-      verifyError.textContent = t('codeResent');
-    } catch (err) { /* ignore */ }
+      verifyError.textContent = r.ok ? t('codeResent') : t('verifyError');
+    } catch (err) { verifyError.textContent = t('verifyError'); }
   });
 
   googleLoginBtn.addEventListener('click', () => {
@@ -1801,6 +1842,7 @@
     avatarUploadInput.value = '';
   }
   cropCancelBtn.addEventListener('click', closeCropPanel);
+  document.getElementById('crop-close-x').addEventListener('click', closeCropPanel);
 
   cropConfirmBtn.addEventListener('click', async () => {
     const canvas = document.createElement('canvas');
@@ -1822,6 +1864,9 @@
           avatarUploadPreview.src = myAvatarUrl;
           accountAvatarPreview.src = myAvatarUrl;
           accountAvatarPreview.style.visibility = 'visible';
+          if (ws && ws.readyState === WebSocket.OPEN){
+            ws.send(JSON.stringify({type:'profile_update', avatar: myAvatarUrl}));
+          }
         }
       } catch (err) { /* ignore, avatar upload is non-critical */ }
       closeCropPanel();

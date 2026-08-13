@@ -22,7 +22,7 @@ from pathlib import Path
 
 from aiohttp import web, ClientSession
 
-ADMIN_EMAIL = "filipcerovsky0@gmail.com"
+ADMIN_EMAIL = "squad.tracker.support@gmail.com"
 
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")

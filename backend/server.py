@@ -25,7 +25,9 @@ import accounts
 
 BASE_DIR = Path(__file__).parent
 FRONTEND_DIR = BASE_DIR.parent / "frontend"
-DB_PATH = BASE_DIR / "history.db"
+DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+DB_PATH = DATA_DIR / "history.db"
 
 RATE_LIMIT_SECONDS = 3
 GEOFENCE_METERS = 50
@@ -525,6 +527,21 @@ async def websocket_handler(request):
             elif mtype == "ping":
                 await ws.send_str(json.dumps({"type": "pong"}))
 
+            elif mtype == "profile_update" and room_id and member_id:
+                # Lets a member push a fresh avatar/color mid-session (e.g. right after
+                # uploading a photo) without waiting for the next rate-limited location
+                # tick - the marker on everyone's map should update immediately.
+                entry = rooms.get(room_id, {}).get(member_id)
+                if not entry:
+                    continue
+                avatar = data.get("avatar")
+                if isinstance(avatar, str) and avatar.startswith("/avatars/") and len(avatar) <= 128:
+                    entry["avatar"] = avatar
+                color = data.get("color")
+                if isinstance(color, str) and color.startswith("#") and len(color) in (4, 7):
+                    entry["color"] = color
+                await broadcast_presence(room_id)
+
             elif mtype == "typing" and room_id and member_id:
                 entry = rooms.get(room_id, {}).get(member_id)
                 if not entry:
@@ -854,7 +871,7 @@ async def static_or_404(request):
 
 def create_app():
     init_db()
-    accounts.init(BASE_DIR / "accounts.db", BASE_DIR / "avatars")
+    accounts.init(DATA_DIR / "accounts.db", DATA_DIR / "avatars")
     app = web.Application(middlewares=[security_headers_middleware, custom_404_middleware])
     app.router.add_get("/health", health)
     app.router.add_get("/vapid-public-key", vapid_public_key)
