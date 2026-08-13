@@ -438,9 +438,12 @@
 
   /* ---------- owner controls ---------- */
   .chip .kick-link{
-    display:inline-block; margin-top:4px; margin-left:6px; color:var(--danger); font-size:10px;
-    text-decoration:none; border:1px solid var(--danger); border-radius:2px; padding:2px 6px;
+    display:inline-flex; align-items:center; justify-content:center;
+    width:20px; height:20px; margin-left:6px; margin-top:0; vertical-align:middle;
+    color:var(--danger); font-size:12px; font-weight:700; line-height:1;
+    text-decoration:none; border:1.5px solid var(--danger); border-radius:50%; padding:0;
   }
+  .chip .kick-link:hover{ background:var(--danger); color:#0a0d0c; }
   .owner-badge{ color:var(--signal); font-size:9px; margin-left:4px; }
 
   /* ---------- settings panel ---------- */
@@ -457,6 +460,11 @@
   #settings-close{ position:absolute; top:14px; right:14px; width:auto; background:transparent; border:1px solid var(--line); padding:6px 12px; font-size:12px; }
   #stats-block{ margin-top:20px; font-family:var(--mono); font-size:12px; color:var(--text-dim); line-height:1.8; }
   #change-password-row{ display:flex; gap:8px; margin-top:16px; }
+  #leave-room-btn{
+    margin-top:24px; background:transparent; border:1px solid var(--danger); color:var(--danger);
+    font-size:12px; padding:11px; font-weight:700;
+  }
+  #leave-room-btn:hover{ background:var(--danger); color:#0a0d0c; }
   #change-password-row input{ flex:1; margin:0; }
   #change-password-row button{ width:auto; margin:0; padding:0 16px; }
 
@@ -709,6 +717,7 @@
       </div>
     </div>
     <div id="stats-block"></div>
+    <button id="leave-room-btn" type="button"></button>
   </div>
 
   <!-- AVATAR CROP PANEL -->
@@ -892,6 +901,8 @@
       verifyExpiredError: 'Kod vyprsel. Klikni na \'Poslat kod znovu\'.',
       verifyTooManyError: 'Prilis mnoho spatnych pokusu. Klikni na \'Poslat kod znovu\' pro novy kod.',
       supportLinkText: 'Potrebujes pomoct?',
+      leaveRoomBtn: 'Opustit misto',
+      leaveRoomConfirm: 'Opravdu chces opustit tuto skupinu?',
       passwordTooShort: 'Heslo musi mit alespon 8 znaku.'
     },
     en: {
@@ -964,6 +975,8 @@
       verifyExpiredError: 'Code expired. Tap \'Resend code\'.',
       verifyTooManyError: 'Too many wrong attempts. Tap \'Resend code\' for a new one.',
       supportLinkText: 'Need help?',
+      leaveRoomBtn: 'Leave room',
+      leaveRoomConfirm: 'Are you sure you want to leave this squad?',
       passwordTooShort: 'Password must be at least 8 characters.'
     },
     fr: {
@@ -1036,6 +1049,8 @@
       verifyExpiredError: 'Code expire. Appuie sur \'Renvoyer le code\'.',
       verifyTooManyError: 'Trop de tentatives incorrectes. Appuie sur \'Renvoyer le code\'.',
       supportLinkText: 'Besoin d\'aide ?',
+      leaveRoomBtn: 'Quitter le groupe',
+      leaveRoomConfirm: 'Es-tu sur de vouloir quitter ce groupe ?',
       passwordTooShort: 'Le mot de passe doit contenir au moins 8 caracteres.'
     },
     es: {
@@ -1108,6 +1123,8 @@
       verifyExpiredError: 'Codigo expirado. Toca \'Reenviar codigo\'.',
       verifyTooManyError: 'Demasiados intentos incorrectos. Toca \'Reenviar codigo\'.',
       supportLinkText: '¿Necesitas ayuda?',
+      leaveRoomBtn: 'Salir del grupo',
+      leaveRoomConfirm: '¿Seguro que quieres salir de este grupo?',
       passwordTooShort: 'La contrasena debe tener al menos 8 caracteres.'
     },
     ar: {
@@ -1180,6 +1197,8 @@
       verifyExpiredError: 'انتهت صلاحية الرمز. اضغط على \'اعادة ارسال الرمز\'.',
       verifyTooManyError: 'عدد كبير جدا من المحاولات الخاطئة. اضغط على \'اعادة ارسال الرمز\'.',
       supportLinkText: 'تحتاج مساعدة؟',
+      leaveRoomBtn: 'مغادرة الغرفة',
+      leaveRoomConfirm: 'هل انت متاكد من مغادرة هذه المجموعة؟',
       passwordTooShort: 'يجب أن تكون كلمة المرور 8 أحرف على الأقل.'
     },
     hi: {
@@ -1252,6 +1271,8 @@
       verifyExpiredError: 'कोड समय समाप्त हो गया। \'कोड फिर से भेजें\' पर टैप करें।',
       verifyTooManyError: 'बहुत सारे गलत प्रयास। नया कोड पाने के लिए \'कोड फिर से भेजें\' पर टैप करें।',
       supportLinkText: 'मदद चाहिए?',
+      leaveRoomBtn: 'कमरा छोड़ें',
+      leaveRoomConfirm: 'क्या आप वाकई इस समूह को छोड़ना चाहते हैं?',
       passwordTooShort: 'पासवर्ड कम से कम 8 अक्षर का होना चाहिए।'
     }
   };
@@ -1349,6 +1370,7 @@
     document.getElementById('crop-cancel-btn').textContent = t('cropCancel');
     document.getElementById('crop-confirm-btn').textContent = t('cropConfirm');
     document.getElementById('support-link').textContent = t('supportLinkText');
+    document.getElementById('leave-room-btn').textContent = t('leaveRoomBtn');
     if (currentAccount) {
       document.getElementById('account-welcome-text').textContent = t('welcomeBack', {name: currentAccount.username});
     }
@@ -1440,6 +1462,7 @@
   const settingsToggle = document.getElementById('settings-toggle');
   const settingsPanel = document.getElementById('settings-panel');
   const settingsClose = document.getElementById('settings-close');
+  const leaveRoomBtn = document.getElementById('leave-room-btn');
   const soundChatToggle = document.getElementById('sound-chat-toggle');
   const soundVoiceToggle = document.getElementById('sound-voice-toggle');
   const soundProximityToggle = document.getElementById('sound-proximity-toggle');
@@ -1753,6 +1776,16 @@
   });
 
   avatarUploadBtn.addEventListener('click', () => avatarUploadInput.click());
+
+  leaveRoomBtn.addEventListener('click', () => {
+    if (!confirm(t('leaveRoomConfirm'))) return;
+    settingsPanel.classList.remove('open');
+    intentionalClose = true;
+    if (ws) ws.close();
+    mapScreen.style.display = 'none';
+    joinScreen.style.display = 'flex';
+    joinBtn.disabled = false;
+  });
 
   // ---------- Avatar crop UI (Instagram-style pan + zoom in a circle) ----------
   const CROP_STAGE_SIZE = 260;
@@ -2151,7 +2184,7 @@
         : '';
       const ownerBadgeHtml = u.is_owner ? '<span class="owner-badge">' + t('ownerBadge') + '</span>' : '';
       const kickHtml = (isOwner && !isMe)
-        ? '<a class="kick-link" href="#" data-kick="' + escapeHtml(u.username) + '">' + t('kickLink') + '</a>'
+        ? '<a class="kick-link" href="#" data-kick="' + escapeHtml(u.username) + '" title="' + t('kickLink') + '">✕</a>'
         : '';
       chip.innerHTML =
         '<span class="name">' + (isMe ? escapeHtml(u.username) + t('meSuffix') : escapeHtml(u.username)) + ownerBadgeHtml + '</span>' +
