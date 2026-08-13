@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>404 - Squad Tracker</title>
+<style>
+  :root{
+    --ink:#0a0d0c; --panel-2:#141a18; --line:#22322b;
+    --signal:#ffb454; --cyan:#4cc9f0; --text:#e7ede9; --text-dim:#7c8f89;
+    --mono:'Courier New', monospace;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; margin:0; }
+  body{
+    background:var(--ink); color:var(--text); font-family:var(--mono);
+    display:flex; align-items:center; justify-content:center; padding:24px;
+    position:relative; overflow:hidden;
+  }
+  .radar{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:900px; height:900px; pointer-events:none;
+  }
+  .radar::before, .radar::after{
+    content:''; position:absolute; inset:0; border-radius:50%; border:1px solid rgba(255,180,84,0.08);
+  }
+  .ring{ position:absolute; border-radius:50%; border:1px solid rgba(255,180,84,0.07); }
+  .ring.r1{ inset:120px; } .ring.r2{ inset:240px; } .ring.r3{ inset:360px; }
+
+  .card{ position:relative; z-index:1; text-align:center; max-width:420px; }
+  .blip{
+    width:14px; height:14px; border-radius:50%; background:var(--danger,#ff5d5d);
+    background:var(--cyan); margin:0 auto 20px; position:relative;
+    box-shadow:0 0 0 0 rgba(76,201,240,0.5); animation:pulse 2s infinite;
+  }
+  @keyframes pulse{
+    0%{ box-shadow:0 0 0 0 rgba(76,201,240,0.5); }
+    70%{ box-shadow:0 0 0 22px rgba(76,201,240,0); }
+    100%{ box-shadow:0 0 0 0 rgba(76,201,240,0); }
+  }
+  .eyebrow{ color:var(--signal); font-size:12px; letter-spacing:.15em; text-transform:uppercase; margin:0 0 8px; }
+  h1{ font-size:56px; margin:0; letter-spacing:.05em; color:var(--text); }
+  p{ color:var(--text-dim); font-size:14px; line-height:1.6; margin:14px 0 28px; }
+  a.btn{
+    display:inline-block; background:var(--signal); color:#0a0d0c; text-decoration:none;
+    font-weight:700; padding:12px 26px; border-radius:4px; font-size:14px; letter-spacing:.02em;
+  }
+  .coords{ margin-top:22px; color:var(--text-dim); font-size:11px; opacity:.7; }
+</style>
+</head>
+<body>
+  <div class="radar">
+    <div class="ring r1"></div>
+    <div class="ring r2"></div>
+    <div class="ring r3"></div>
+  </div>
+
+  <div class="card">
+    <div class="blip"></div>
+    <p class="eyebrow">// signal lost</p>
+    <h1>404</h1>
+    <p>Tahle poloha na mape neexistuje.<br/>Stranka, kterou hledas, se ztratila ze signalu.</p>
+    <a class="btn" href="/">Zpet na mapu</a>
+    <div class="coords">ERR_NOT_FOUND &middot; squad-tracker.site</div>
+  </div>
+</body>
+</html>

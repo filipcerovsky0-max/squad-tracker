@@ -3,15 +3,27 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>Squad Tracker</title>
+<title>Squad Tracker - Real-time GPS sledovani skupiny</title>
+<meta name="description" content="Squad Tracker je real-time GPS sledovani polohy pro skupiny a vylety. Sdileni polohy, chat, hlasovky a bezpecne setkavani - primo v prohlizeci, bez instalace." />
+<link rel="canonical" href="https://squad-tracker.site/" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Squad Tracker - Real-time GPS sledovani skupiny" />
+<meta property="og:description" content="Sdilej polohu, chatuj a zustan v kontaktu se svou skupinou v realnem case. Bez instalace, primo v prohlizeci." />
+<meta property="og:url" content="https://squad-tracker.site/" />
+<meta property="og:image" content="https://squad-tracker.site/icons/icon-192.png" />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="Squad Tracker - Real-time GPS sledovani skupiny" />
+<meta name="twitter:description" content="Sdilej polohu, chatuj a zustan v kontaktu se svou skupinou v realnem case." />
 <link rel="manifest" href="/manifest.json" />
 <link rel="icon" href="/icons/icon-192.png" />
 <link rel="apple-touch-icon" href="/icons/icon-192.png" />
 <meta name="theme-color" content="#0a0d0c" />
+<link rel="preconnect" href="https://unpkg.com" crossorigin />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" />
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
-
   :root{
     --ink:#0a0d0c;
     --panel:#101614;
@@ -126,6 +138,7 @@
     position:relative; width:auto; margin:0; background:rgba(16,22,20,0.9); border:1px solid var(--line);
     color:var(--text); font-family:var(--mono); font-size:11px; padding:6px 10px; border-radius:3px;
     letter-spacing:.05em; text-transform:uppercase; cursor:pointer;
+    display:flex; align-items:center; gap:5px;
   }
   .icon-btn:active{ transform:none; }
   .unread-dot{
@@ -158,6 +171,7 @@
   .squad-marker{ position:relative; width:16px; height:16px; }
   .squad-marker .dot{ width:12px; height:12px; border-radius:50%; background:var(--cyan); border:2px solid #05141a; }
   .squad-marker.me .dot{ background:var(--signal); border-color:#1a1204; }
+  .squad-marker .dot.avatar-dot{ object-fit:cover; background:#05141a; }
   .squad-marker .ring{
     position:absolute; inset:-8px; border-radius:50%; border:1px solid var(--cyan); opacity:0;
     animation:ring 2.4s ease-out infinite;
@@ -266,9 +280,11 @@
     position:absolute; left:16px; z-index:1000; width:52px; height:40px; margin:0;
     background:var(--panel-2); border:1px solid var(--line); color:var(--text-dim);
     font-size:10px; font-family:var(--mono); border-radius:6px; padding:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
   }
   #poll-btn{ bottom:158px; }
   #waypoint-btn{ bottom:204px; }
+  .btn-caption{ font-size:9px; letter-spacing:.03em; }
 
   #poll-create-panel{
     position:absolute; inset:0; z-index:1200; background:rgba(8,11,10,0.97);
@@ -337,6 +353,7 @@
     position:absolute; left:16px; top:56px; z-index:1000; width:auto; margin:0;
     padding:6px 10px; font-size:11px; background:rgba(16,22,20,0.9); border:1px solid var(--line);
     color:var(--text-dim); font-family:var(--mono);
+    display:flex; align-items:center; gap:5px;
   }
   #map-style-toggle.active{ border-color:var(--cyan); color:var(--cyan); }
 
@@ -346,6 +363,30 @@
     border:1px solid var(--danger); padding:6px 14px; border-radius:3px; display:none; white-space:nowrap;
   }
   #gps-lost-banner.show{ display:block; }
+
+  #vehicle-prompt{
+    position:absolute; top:52px; left:50%; transform:translateX(-50%); z-index:1050;
+    font-family:var(--mono); font-size:11px; color:var(--text); background:rgba(16,22,20,0.97);
+    border:1px solid var(--cyan); padding:10px 14px; border-radius:5px; display:none; text-align:center;
+    max-width:280px;
+  }
+  #vehicle-prompt.show{ display:block; }
+  #vehicle-prompt-btns{ display:flex; gap:6px; margin-top:8px; align-items:center; justify-content:center; }
+  .vehicle-choice-btn{
+    width:auto; margin:0; padding:8px; background:var(--panel-2); border:1px solid var(--line);
+    color:var(--text-dim); display:flex; align-items:center; justify-content:center; border-radius:4px;
+  }
+  .vehicle-choice-btn:hover{ border-color:var(--cyan); color:var(--cyan); }
+  #vehicle-prompt-dismiss{
+    width:auto; margin:0; padding:8px 10px; background:transparent; border:1px solid var(--line); color:var(--text-dim); font-size:11px;
+  }
+  .squad-marker .vehicle-badge{
+    position:absolute; bottom:-4px; right:-4px; width:14px; height:14px; border-radius:50%;
+    background:var(--signal); color:#0a0d0c; display:flex; align-items:center; justify-content:center;
+    border:1px solid #1a1204;
+  }
+  .squad-marker.me .vehicle-badge{ background:var(--signal); }
+  .squad-marker:not(.me) .vehicle-badge{ background:var(--cyan); border-color:#05141a; }
 
   .chip.signal-lost{ opacity:0.4; }
   .chip.signal-lost .age{ color:var(--danger); }
@@ -418,6 +459,57 @@
   #change-password-row{ display:flex; gap:8px; margin-top:16px; }
   #change-password-row input{ flex:1; margin:0; }
   #change-password-row button{ width:auto; margin:0; padding:0 16px; }
+
+  /* ---------- account panel ---------- */
+  #account-status-bar{
+    display:flex; align-items:center; gap:10px; margin:14px 0 4px; padding:10px 12px;
+    background:var(--panel-2); border:1px solid var(--line); border-radius:6px;
+  }
+  #account-avatar-preview{
+    width:32px; height:32px; border-radius:50%; object-fit:cover; border:1px solid var(--line);
+    background:var(--ink);
+  }
+  #account-welcome-text{ flex:1; font-family:var(--mono); font-size:12px; color:var(--text); }
+  #account-logout-btn{
+    width:auto; margin:0; padding:6px 10px; font-size:11px; background:transparent;
+    border:1px solid var(--line); color:var(--text-dim);
+  }
+  #open-account-btn{
+    margin-top:10px; background:transparent; border:1px dashed var(--line); color:var(--cyan);
+    font-size:12px; padding:10px;
+  }
+  #account-panel{
+    position:absolute; inset:0; z-index:1300; background:rgba(8,11,10,0.98);
+    display:none; flex-direction:column; padding:24px; overflow-y:auto;
+  }
+  #account-panel.open{ display:flex; }
+  #account-close{ position:absolute; top:14px; right:14px; width:auto; background:transparent; border:1px solid var(--line); padding:6px 12px; font-size:12px; }
+  #account-tabs{ display:flex; gap:8px; margin:12px 0 20px; }
+  .account-tab{
+    flex:1; margin:0; background:transparent; border:1px solid var(--line); color:var(--text-dim);
+    font-size:12px; padding:10px; letter-spacing:.04em; text-transform:uppercase;
+  }
+  .account-tab.active{ border-color:var(--signal); color:var(--signal); }
+  #login-form label, #register-form label{ display:block; font-family:var(--mono); font-size:11px; color:var(--text-dim); margin:12px 0 4px; }
+  .form-error{ color:var(--danger,#ff5d5d); font-size:12px; font-family:var(--mono); min-height:16px; margin:8px 0 0; }
+  #verify-form p#t-verify-info{ font-size:12px; color:var(--text-dim); margin-bottom:14px; line-height:1.5; }
+  #verify-code{ text-align:center; font-size:22px; letter-spacing:.3em; font-family:var(--mono); }
+  #resend-code-link{ text-align:center; color:var(--cyan); font-size:12px; margin-top:14px; cursor:pointer; text-decoration:underline; }
+  .account-divider{ display:flex; align-items:center; gap:10px; margin:22px 0; color:var(--text-dim); font-size:11px; }
+  .account-divider::before, .account-divider::after{ content:''; flex:1; height:1px; background:var(--line); }
+  #google-login-btn{
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    background:#fff; color:#1f1f1f; border:none; font-weight:600; font-size:13px; padding:12px;
+  }
+  #avatar-upload-row{ display:flex; align-items:center; gap:12px; margin-top:16px; }
+  #avatar-upload-preview{
+    width:44px; height:44px; border-radius:50%; object-fit:cover; border:1px solid var(--line); background:var(--panel-2);
+  }
+  #avatar-upload-btn{ width:auto; margin:0; padding:8px 14px; font-size:12px; }
+  #admin-link-row{ margin-top:12px; }
+  #admin-link-btn{
+    width:100%; background:transparent; border:1px solid var(--cyan); color:var(--cyan); font-size:12px; padding:10px;
+  }
 </style>
 </head>
 <body>
@@ -447,6 +539,12 @@
         <input type="color" id="avatar-color" value="#ffb454" />
         <span id="t-color-label">Barva znacky</span>
       </div>
+      <div id="account-status-bar" style="display:none;">
+        <img id="account-avatar-preview" alt="" />
+        <span id="account-welcome-text"></span>
+        <button type="button" id="account-logout-btn"></button>
+      </div>
+      <button type="button" id="open-account-btn"></button>
       <label class="consent-row" for="consent-checkbox">
         <input type="checkbox" id="consent-checkbox" />
         <span id="t-consent-label">Souhlasim se sdilenim polohy, chatu a hlasu s ostatnimi v teto mistnosti.</span>
@@ -462,21 +560,30 @@
       <span class="room-tag"><span id="status-dot"></span><span id="t-room-prefix">ROOM</span> <b id="room-label"></b></span>
       <div class="topbar-right">
         <span class="room-tag" id="me-label"></span>
-        <button class="icon-btn" id="settings-toggle"><span id="t-settings-btn">Settings</span></button>
-        <button class="icon-btn" id="chat-toggle"><span id="t-chat-btn">Chat</span><span class="unread-dot" id="unread-dot"></span></button>
+        <button class="icon-btn" id="settings-toggle"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span id="t-settings-btn">Settings</span></button>
+        <button class="icon-btn" id="chat-toggle"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg><span id="t-chat-btn">Chat</span><span class="unread-dot" id="unread-dot"></span></button>
       </div>
     </div>
     <div id="map"></div>
-    <button id="map-style-toggle" title="Satellite">SAT</button>
+    <button id="map-style-toggle" title="Satellite"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1.5" fill="currentColor" stroke="none"/></svg><span class="btn-caption">SAT</span></button>
     <div id="map-crosshair"></div>
     <div id="alert-toast"></div>
     <div id="speaking-indicator"></div>
     <div id="gps-lost-banner"></div>
+    <div id="vehicle-prompt">
+      <span id="t-vehicle-prompt-text"></span>
+      <div id="vehicle-prompt-btns">
+        <button type="button" data-vehicle="car" class="vehicle-choice-btn"></button>
+        <button type="button" data-vehicle="train" class="vehicle-choice-btn"></button>
+        <button type="button" data-vehicle="bus" class="vehicle-choice-btn"></button>
+        <button type="button" id="vehicle-prompt-dismiss">X</button>
+      </div>
+    </div>
     <p id="ptt-label">DRŽ A MLUV</p>
-    <button id="ptt-btn">PTT</button>
-    <button id="pin-btn" title="Sraz tady">PIN</button>
-    <button id="poll-btn" title="Poll">POLL</button>
-    <button id="waypoint-btn" title="Add stop">+STOP</button>
+    <button id="ptt-btn"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></button>
+    <button id="pin-btn" title="Sraz tady"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></button>
+    <button id="poll-btn" title="Poll"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span class="btn-caption">POLL</span></button>
+    <button id="waypoint-btn" title="Add stop"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg><span class="btn-caption">STOP</span></button>
     <div id="hud-bottom"></div>
 
     <!-- CHAT PANEL -->
@@ -498,7 +605,7 @@
       </div>
       <div id="chat-input-row">
         <input type="file" id="chat-image-input" accept="image/*" style="display:none;" />
-        <button id="chat-image-btn" style="width:auto; margin:0; padding:11px 14px;">IMG</button>
+        <button id="chat-image-btn" style="width:auto; margin:0; padding:11px 14px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
         <input id="chat-input" maxlength="500" placeholder="Napis zpravu..." autocomplete="off" />
         <button id="chat-send">Odeslat</button>
       </div>
@@ -528,6 +635,31 @@
     <div class="setting-row">
       <span id="t-notif-label">Oznameni na pozadi</span>
       <input type="checkbox" id="notif-toggle" />
+    </div>
+    <p class="eyebrow" id="t-features-title" style="margin-top:18px;"></p>
+    <div class="setting-row">
+      <span id="t-feature-compass-label"></span>
+      <input type="checkbox" id="feature-compass-toggle" checked />
+    </div>
+    <div class="setting-row">
+      <span id="t-feature-satellite-label"></span>
+      <input type="checkbox" id="feature-satellite-toggle" checked />
+    </div>
+    <div class="setting-row">
+      <span id="t-feature-polls-label"></span>
+      <input type="checkbox" id="feature-polls-toggle" checked />
+    </div>
+    <div class="setting-row">
+      <span id="t-feature-waypoints-label"></span>
+      <input type="checkbox" id="feature-waypoints-toggle" checked />
+    </div>
+    <div id="avatar-upload-row" style="display:none;">
+      <img id="avatar-upload-preview" alt="" />
+      <button id="avatar-upload-btn" type="button"></button>
+      <input type="file" id="avatar-upload-input" accept="image/*" style="display:none;" />
+    </div>
+    <div id="admin-link-row" style="display:none;">
+      <button id="admin-link-btn" type="button"></button>
     </div>
     <button id="open-share-btn" style="margin-top:16px;"></button>
     <div id="owner-controls" style="display:none;">
@@ -579,6 +711,51 @@
     </div>
   </div>
 
+    <!-- ACCOUNT PANEL (login / register / verify) -->
+  <div id="account-panel">
+    <button id="account-close">X</button>
+    <p class="eyebrow" id="t-account-title">Ucet</p>
+
+    <div id="account-tabs">
+      <button type="button" id="tab-login" class="account-tab active"></button>
+      <button type="button" id="tab-register" class="account-tab"></button>
+    </div>
+
+    <form id="login-form" autocomplete="on">
+      <label for="login-email" id="t-login-email-label">E-mail</label>
+      <input id="login-email" type="email" autocomplete="username" />
+      <label for="login-password" id="t-login-password-label">Heslo</label>
+      <input id="login-password" type="password" autocomplete="current-password" />
+      <button type="submit" id="login-submit"></button>
+      <p class="form-error" id="login-error"></p>
+    </form>
+
+    <form id="register-form" autocomplete="on" style="display:none;">
+      <label for="reg-email" id="t-reg-email-label">E-mail</label>
+      <input id="reg-email" type="email" autocomplete="username" />
+      <label for="reg-username" id="t-reg-username-label">Uzivatelske jmeno</label>
+      <input id="reg-username" maxlength="24" autocomplete="nickname" />
+      <label for="reg-password" id="t-reg-password-label">Heslo (min. 8 znaku)</label>
+      <input id="reg-password" type="password" autocomplete="new-password" />
+      <button type="submit" id="register-submit"></button>
+      <p class="form-error" id="register-error"></p>
+    </form>
+
+    <div id="verify-form" style="display:none;">
+      <p id="t-verify-info"></p>
+      <input id="verify-code" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="000000" />
+      <button type="button" id="verify-submit"></button>
+      <p id="resend-code-link"></p>
+      <p class="form-error" id="verify-error"></p>
+    </div>
+
+    <div class="account-divider" id="account-divider"><span id="t-or-label">nebo</span></div>
+    <button type="button" id="google-login-btn">
+      <svg viewBox="0 0 48 48" width="18" height="18"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.6 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.9 5.1 29.7 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.4-.1-2.7-.4-4z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.6 15.6 18.9 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34.9 5.1 29.7 3 24 3 16 3 9 7.6 6.3 14.7z"/><path fill="#4CAF50" d="M24 45c5.6 0 10.7-2.1 14.5-5.6l-6.7-5.5C29.6 35.6 27 36.5 24 36.5c-5.2 0-9.6-3.3-11.2-7.9l-6.6 5.1C9 40.3 16 45 24 45z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.9l6.7 5.5C41.5 36 45 30.5 45 24c0-1.4-.1-2.7-.4-3.5z"/></svg>
+      <span id="t-google-btn"></span>
+    </button>
+  </div>
+
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -617,7 +794,41 @@
       pollBtnTitle: 'Anketa', waypointBtnTitle: 'Pridat zastavku', pollCreateTitle: 'Nova anketa',
       pollQuestionPlaceholder: 'Otazka', pollOptionPlaceholder: 'Moznost', optionalHint: 'volitelne',
       pollCreateSubmit: 'Vytvorit anketu', pollNeedsOptions: 'Zadej otazku a alespon 2 moznosti',
-      waypointLabelPrompt: 'Nazev zastavky (nepovinne)'
+      waypointLabelPrompt: 'Nazev zastavky (nepovinne)',
+      accountTitle: 'Ucet',
+      loginTab: 'Prihlasit se',
+      registerTab: 'Vytvorit ucet',
+      loginEmailLabel: 'E-mail',
+      loginPasswordLabel: 'Heslo',
+      loginSubmit: 'Prihlasit se',
+      regEmailLabel: 'E-mail',
+      regUsernameLabel: 'Uzivatelske jmeno',
+      regPasswordLabel: 'Heslo (min. 8 znaku)',
+      registerSubmit: 'Vytvorit ucet',
+      verifyInfo: 'Poslali jsme ti 6-mistny kod na e-mail.',
+      verifySubmit: 'Overit',
+      resendCode: 'Poslat kod znovu',
+      orLabel: 'nebo',
+      googleBtn: 'Pokracovat s Google',
+      openAccountBtn: 'Prihlasit se / Vytvorit ucet',
+      logoutBtn: 'Odhlasit',
+      welcomeBack: 'Vitej zpet, {name}',
+      avatarUploadBtn: 'Nahrat profilovku',
+      adminLinkBtn: 'Otevrit admin panel',
+      loginError: 'Spatny e-mail nebo heslo.',
+      registerError: 'Registrace se nezdarila. Zkontroluj udaje.',
+      verifyError: 'Spatny kod, zkus to znovu.',
+      codeResent: 'Kod byl odeslan znovu.',
+      vehiclePromptText: 'Vypada to, ze se pohybujes rychle. Jak cestujes?',
+      vehicleCarTitle: 'Auto',
+      vehicleTrainTitle: 'Vlak',
+      vehicleBusTitle: 'Autobus',
+      featuresTitle: 'Volitelne funkce',
+      featureCompassLabel: 'Kompas',
+      featureSatelliteLabel: 'Prepinac satelitni mapy',
+      featurePollsLabel: 'Ankety',
+      featureWaypointsLabel: 'Zastavky na trase',
+      passwordTooShort: 'Heslo musi mit alespon 8 znaku.'
     },
     en: {
       title: 'Join the squad', nameLabel: 'Your name', namePlaceholder: 'e.g. Falcon',
@@ -649,7 +860,41 @@
       pollBtnTitle: 'Poll', waypointBtnTitle: 'Add stop', pollCreateTitle: 'New poll',
       pollQuestionPlaceholder: 'Question', pollOptionPlaceholder: 'Option', optionalHint: 'optional',
       pollCreateSubmit: 'Create poll', pollNeedsOptions: 'Enter a question and at least 2 options',
-      waypointLabelPrompt: 'Stop name (optional)'
+      waypointLabelPrompt: 'Stop name (optional)',
+      accountTitle: 'Account',
+      loginTab: 'Log in',
+      registerTab: 'Create account',
+      loginEmailLabel: 'Email',
+      loginPasswordLabel: 'Password',
+      loginSubmit: 'Log in',
+      regEmailLabel: 'Email',
+      regUsernameLabel: 'Username',
+      regPasswordLabel: 'Password (min. 8 characters)',
+      registerSubmit: 'Create account',
+      verifyInfo: 'We sent a 6-digit code to your email.',
+      verifySubmit: 'Verify',
+      resendCode: 'Resend code',
+      orLabel: 'or',
+      googleBtn: 'Continue with Google',
+      openAccountBtn: 'Log in / Create account',
+      logoutBtn: 'Log out',
+      welcomeBack: 'Welcome back, {name}',
+      avatarUploadBtn: 'Upload avatar',
+      adminLinkBtn: 'Open admin panel',
+      loginError: 'Wrong email or password.',
+      registerError: 'Registration failed. Check your details.',
+      verifyError: 'Wrong code, try again.',
+      codeResent: 'Code resent.',
+      vehiclePromptText: 'Looks like you\'re moving fast. How are you traveling?',
+      vehicleCarTitle: 'Car',
+      vehicleTrainTitle: 'Train',
+      vehicleBusTitle: 'Bus',
+      featuresTitle: 'Optional features',
+      featureCompassLabel: 'Compass',
+      featureSatelliteLabel: 'Satellite map toggle',
+      featurePollsLabel: 'Polls',
+      featureWaypointsLabel: 'Route stops',
+      passwordTooShort: 'Password must be at least 8 characters.'
     },
     fr: {
       title: "Rejoindre l'equipe", nameLabel: 'Ton nom', namePlaceholder: 'ex. Falcon',
@@ -681,7 +926,41 @@
       pollBtnTitle: 'Sondage', waypointBtnTitle: 'Ajouter un arret', pollCreateTitle: 'Nouveau sondage',
       pollQuestionPlaceholder: 'Question', pollOptionPlaceholder: 'Option', optionalHint: 'facultatif',
       pollCreateSubmit: 'Creer le sondage', pollNeedsOptions: 'Entre une question et au moins 2 options',
-      waypointLabelPrompt: "Nom de l'arret (facultatif)"
+      waypointLabelPrompt: "Nom de l'arret (facultatif)",
+      accountTitle: 'Compte',
+      loginTab: 'Se connecter',
+      registerTab: 'Creer un compte',
+      loginEmailLabel: 'E-mail',
+      loginPasswordLabel: 'Mot de passe',
+      loginSubmit: 'Se connecter',
+      regEmailLabel: 'E-mail',
+      regUsernameLabel: 'Nom d\'utilisateur',
+      regPasswordLabel: 'Mot de passe (min. 8 caracteres)',
+      registerSubmit: 'Creer un compte',
+      verifyInfo: 'Nous avons envoye un code a 6 chiffres a votre e-mail.',
+      verifySubmit: 'Verifier',
+      resendCode: 'Renvoyer le code',
+      orLabel: 'ou',
+      googleBtn: 'Continuer avec Google',
+      openAccountBtn: 'Se connecter / Creer un compte',
+      logoutBtn: 'Se deconnecter',
+      welcomeBack: 'Content de te revoir, {name}',
+      avatarUploadBtn: 'Changer l\'avatar',
+      adminLinkBtn: 'Ouvrir le panneau admin',
+      loginError: 'E-mail ou mot de passe incorrect.',
+      registerError: 'Echec de l\'inscription. Verifiez vos donnees.',
+      verifyError: 'Code incorrect, reessayez.',
+      codeResent: 'Code renvoye.',
+      vehiclePromptText: 'On dirait que tu te deplaces vite. Comment voyages-tu ?',
+      vehicleCarTitle: 'Voiture',
+      vehicleTrainTitle: 'Train',
+      vehicleBusTitle: 'Bus',
+      featuresTitle: 'Fonctions optionnelles',
+      featureCompassLabel: 'Boussole',
+      featureSatelliteLabel: 'Bascule carte satellite',
+      featurePollsLabel: 'Sondages',
+      featureWaypointsLabel: 'Arrets d\'itineraire',
+      passwordTooShort: 'Le mot de passe doit contenir au moins 8 caracteres.'
     },
     es: {
       title: 'Unirse al equipo', nameLabel: 'Tu nombre', namePlaceholder: 'ej. Falcon',
@@ -713,7 +992,41 @@
       pollBtnTitle: 'Encuesta', waypointBtnTitle: 'Anadir parada', pollCreateTitle: 'Nueva encuesta',
       pollQuestionPlaceholder: 'Pregunta', pollOptionPlaceholder: 'Opcion', optionalHint: 'opcional',
       pollCreateSubmit: 'Crear encuesta', pollNeedsOptions: 'Escribe una pregunta y al menos 2 opciones',
-      waypointLabelPrompt: 'Nombre de la parada (opcional)'
+      waypointLabelPrompt: 'Nombre de la parada (opcional)',
+      accountTitle: 'Cuenta',
+      loginTab: 'Iniciar sesion',
+      registerTab: 'Crear cuenta',
+      loginEmailLabel: 'Correo',
+      loginPasswordLabel: 'Contrasena',
+      loginSubmit: 'Iniciar sesion',
+      regEmailLabel: 'Correo',
+      regUsernameLabel: 'Nombre de usuario',
+      regPasswordLabel: 'Contrasena (min. 8 caracteres)',
+      registerSubmit: 'Crear cuenta',
+      verifyInfo: 'Enviamos un codigo de 6 digitos a tu correo.',
+      verifySubmit: 'Verificar',
+      resendCode: 'Reenviar codigo',
+      orLabel: 'o',
+      googleBtn: 'Continuar con Google',
+      openAccountBtn: 'Iniciar sesion / Crear cuenta',
+      logoutBtn: 'Cerrar sesion',
+      welcomeBack: 'Bienvenido de nuevo, {name}',
+      avatarUploadBtn: 'Subir avatar',
+      adminLinkBtn: 'Abrir panel admin',
+      loginError: 'Correo o contrasena incorrectos.',
+      registerError: 'Registro fallido. Revisa tus datos.',
+      verifyError: 'Codigo incorrecto, intenta de nuevo.',
+      codeResent: 'Codigo reenviado.',
+      vehiclePromptText: 'Parece que te mueves rapido. ¿Como viajas?',
+      vehicleCarTitle: 'Coche',
+      vehicleTrainTitle: 'Tren',
+      vehicleBusTitle: 'Autobus',
+      featuresTitle: 'Funciones opcionales',
+      featureCompassLabel: 'Brujula',
+      featureSatelliteLabel: 'Alternar mapa satelital',
+      featurePollsLabel: 'Encuestas',
+      featureWaypointsLabel: 'Paradas de ruta',
+      passwordTooShort: 'La contrasena debe tener al menos 8 caracteres.'
     },
     ar: {
       title: 'انضم إلى الفريق', nameLabel: 'اسمك', namePlaceholder: 'مثال: Falcon',
@@ -745,7 +1058,41 @@
       pollBtnTitle: 'استطلاع', waypointBtnTitle: 'إضافة محطة', pollCreateTitle: 'استطلاع جديد',
       pollQuestionPlaceholder: 'سؤال', pollOptionPlaceholder: 'خيار', optionalHint: 'اختياري',
       pollCreateSubmit: 'إنشاء استطلاع', pollNeedsOptions: 'أدخل سؤالاً وخيارين على الأقل',
-      waypointLabelPrompt: 'اسم المحطة (اختياري)'
+      waypointLabelPrompt: 'اسم المحطة (اختياري)',
+      accountTitle: 'الحساب',
+      loginTab: 'تسجيل الدخول',
+      registerTab: 'إنشاء حساب',
+      loginEmailLabel: 'البريد الإلكتروني',
+      loginPasswordLabel: 'كلمة المرور',
+      loginSubmit: 'تسجيل الدخول',
+      regEmailLabel: 'البريد الإلكتروني',
+      regUsernameLabel: 'اسم المستخدم',
+      regPasswordLabel: 'كلمة المرور (8 أحرف على الأقل)',
+      registerSubmit: 'إنشاء حساب',
+      verifyInfo: 'أرسلنا رمزًا مكونًا من 6 أرقام إلى بريدك الإلكتروني.',
+      verifySubmit: 'تحقق',
+      resendCode: 'إعادة إرسال الرمز',
+      orLabel: 'أو',
+      googleBtn: 'المتابعة باستخدام Google',
+      openAccountBtn: 'تسجيل الدخول / إنشاء حساب',
+      logoutBtn: 'تسجيل الخروج',
+      welcomeBack: 'مرحبًا بعودتك، {name}',
+      avatarUploadBtn: 'تحميل الصورة الرمزية',
+      adminLinkBtn: 'فتح لوحة الإدارة',
+      loginError: 'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
+      registerError: 'فشل التسجيل. تحقق من بياناتك.',
+      verifyError: 'رمز غير صحيح، حاول مرة أخرى.',
+      codeResent: 'تم إعادة إرسال الرمز.',
+      vehiclePromptText: 'يبدو أنك تتحرك بسرعة. كيف تسافر؟',
+      vehicleCarTitle: 'سيارة',
+      vehicleTrainTitle: 'قطار',
+      vehicleBusTitle: 'حافلة',
+      featuresTitle: 'ميزات اختيارية',
+      featureCompassLabel: 'بوصلة',
+      featureSatelliteLabel: 'تبديل الخريطة الفضائية',
+      featurePollsLabel: 'استطلاعات',
+      featureWaypointsLabel: 'محطات المسار',
+      passwordTooShort: 'يجب أن تكون كلمة المرور 8 أحرف على الأقل.'
     },
     hi: {
       title: 'दल में शामिल हों', nameLabel: 'आपका नाम', namePlaceholder: 'जैसे Falcon',
@@ -777,7 +1124,41 @@
       pollBtnTitle: 'पोल', waypointBtnTitle: 'स्टॉप जोड़ें', pollCreateTitle: 'नया पोल',
       pollQuestionPlaceholder: 'सवाल', pollOptionPlaceholder: 'विकल्प', optionalHint: 'वैकल्पिक',
       pollCreateSubmit: 'पोल बनाएं', pollNeedsOptions: 'एक सवाल और कम से कम 2 विकल्प दर्ज करें',
-      waypointLabelPrompt: 'स्टॉप का नाम (वैकल्पिक)'
+      waypointLabelPrompt: 'स्टॉप का नाम (वैकल्पिक)',
+      accountTitle: 'खाता',
+      loginTab: 'लॉग इन करें',
+      registerTab: 'खाता बनाएं',
+      loginEmailLabel: 'ईमेल',
+      loginPasswordLabel: 'पासवर्ड',
+      loginSubmit: 'लॉग इन करें',
+      regEmailLabel: 'ईमेल',
+      regUsernameLabel: 'उपयोगकर्ता नाम',
+      regPasswordLabel: 'पासवर्ड (कम से कम 8 अक्षर)',
+      registerSubmit: 'खाता बनाएं',
+      verifyInfo: 'हमने आपके ईमेल पर 6-अंकीय कोड भेजा है।',
+      verifySubmit: 'सत्यापित करें',
+      resendCode: 'कोड फिर से भेजें',
+      orLabel: 'या',
+      googleBtn: 'Google के साथ जारी रखें',
+      openAccountBtn: 'लॉग इन करें / खाता बनाएं',
+      logoutBtn: 'लॉग आउट करें',
+      welcomeBack: 'वापसी पर स्वागत है, {name}',
+      avatarUploadBtn: 'प्रोफ़ाइल फोटो अपलोड करें',
+      adminLinkBtn: 'एडमिन पैनल खोलें',
+      loginError: 'गलत ईमेल या पासवर्ड।',
+      registerError: 'पंजीकरण विफल। अपना विवरण जांचें।',
+      verifyError: 'गलत कोड, फिर से कोशिश करें।',
+      codeResent: 'कोड फिर से भेजा गया।',
+      vehiclePromptText: 'लगता है आप तेज़ी से आगे बढ़ रहे हैं। आप कैसे यात्रा कर रहे हैं?',
+      vehicleCarTitle: 'कार',
+      vehicleTrainTitle: 'ट्रेन',
+      vehicleBusTitle: 'बस',
+      featuresTitle: 'वैकल्पिक सुविधाएं',
+      featureCompassLabel: 'कम्पास',
+      featureSatelliteLabel: 'सैटेलाइट मैप टॉगल',
+      featurePollsLabel: 'सर्वेक्षण',
+      featureWaypointsLabel: 'मार्ग स्टॉप',
+      passwordTooShort: 'पासवर्ड कम से कम 8 अक्षर का होना चाहिए।'
     }
   };
 
@@ -788,6 +1169,8 @@
   }
 
   let currentLang = detectDefaultLang();
+  let currentAccount = null;   // {username, email, is_admin} or null if guest
+  let myAvatarUrl = null;
 
   function t(key, vars){
     let str = (I18N[currentLang] && I18N[currentLang][key]) || I18N.en[key] || key;
@@ -840,6 +1223,37 @@
     pollOptionInput2.placeholder = t('pollOptionPlaceholder') + ' 2';
     pollOptionInput3.placeholder = t('pollOptionPlaceholder') + ' 3 (' + t('optionalHint') + ')';
     pollCreateSubmit.textContent = t('pollCreateSubmit');
+    document.getElementById('t-account-title').textContent = t('accountTitle');
+    document.getElementById('tab-login').textContent = t('loginTab');
+    document.getElementById('tab-register').textContent = t('registerTab');
+    document.getElementById('t-login-email-label').textContent = t('loginEmailLabel');
+    document.getElementById('t-login-password-label').textContent = t('loginPasswordLabel');
+    document.getElementById('login-submit').textContent = t('loginSubmit');
+    document.getElementById('t-reg-email-label').textContent = t('regEmailLabel');
+    document.getElementById('t-reg-username-label').textContent = t('regUsernameLabel');
+    document.getElementById('t-reg-password-label').textContent = t('regPasswordLabel');
+    document.getElementById('register-submit').textContent = t('registerSubmit');
+    document.getElementById('t-verify-info').textContent = t('verifyInfo');
+    document.getElementById('verify-submit').textContent = t('verifySubmit');
+    document.getElementById('resend-code-link').textContent = t('resendCode');
+    document.getElementById('t-or-label').textContent = t('orLabel');
+    document.getElementById('t-google-btn').textContent = t('googleBtn');
+    document.getElementById('open-account-btn').textContent = t('openAccountBtn');
+    document.getElementById('account-logout-btn').textContent = t('logoutBtn');
+    document.getElementById('avatar-upload-btn').textContent = t('avatarUploadBtn');
+    document.getElementById('admin-link-btn').textContent = t('adminLinkBtn');
+    document.getElementById('t-vehicle-prompt-text').textContent = t('vehiclePromptText');
+    document.querySelector('.vehicle-choice-btn[data-vehicle="car"]').title = t('vehicleCarTitle');
+    document.querySelector('.vehicle-choice-btn[data-vehicle="train"]').title = t('vehicleTrainTitle');
+    document.querySelector('.vehicle-choice-btn[data-vehicle="bus"]').title = t('vehicleBusTitle');
+    document.getElementById('t-features-title').textContent = t('featuresTitle');
+    document.getElementById('t-feature-compass-label').textContent = t('featureCompassLabel');
+    document.getElementById('t-feature-satellite-label').textContent = t('featureSatelliteLabel');
+    document.getElementById('t-feature-polls-label').textContent = t('featurePollsLabel');
+    document.getElementById('t-feature-waypoints-label').textContent = t('featureWaypointsLabel');
+    if (currentAccount) {
+      document.getElementById('account-welcome-text').textContent = t('welcomeBack', {name: currentAccount.username});
+    }
     document.querySelectorAll('#lang-switch button').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.lang === currentLang);
     });
@@ -888,6 +1302,37 @@
   const qr2 = document.getElementById('qr-2');
   const qr3 = document.getElementById('qr-3');
   const avatarColor = document.getElementById('avatar-color');
+  const accountStatusBar = document.getElementById('account-status-bar');
+  const accountAvatarPreview = document.getElementById('account-avatar-preview');
+  const accountWelcomeText = document.getElementById('account-welcome-text');
+  const accountLogoutBtn = document.getElementById('account-logout-btn');
+  const openAccountBtn = document.getElementById('open-account-btn');
+  const accountPanel = document.getElementById('account-panel');
+  const accountClose = document.getElementById('account-close');
+  const tabLogin = document.getElementById('tab-login');
+  const tabRegister = document.getElementById('tab-register');
+  const loginForm = document.getElementById('login-form');
+  const registerForm = document.getElementById('register-form');
+  const verifyForm = document.getElementById('verify-form');
+  const loginEmail = document.getElementById('login-email');
+  const loginPassword = document.getElementById('login-password');
+  const loginError = document.getElementById('login-error');
+  const regEmail = document.getElementById('reg-email');
+  const regUsername = document.getElementById('reg-username');
+  const regPassword = document.getElementById('reg-password');
+  const registerError = document.getElementById('register-error');
+  const verifyCode = document.getElementById('verify-code');
+  const verifyError = document.getElementById('verify-error');
+  const verifySubmit = document.getElementById('verify-submit');
+  const resendCodeLink = document.getElementById('resend-code-link');
+  const googleLoginBtn = document.getElementById('google-login-btn');
+  const accountDivider = document.getElementById('account-divider');
+  const avatarUploadRow = document.getElementById('avatar-upload-row');
+  const avatarUploadPreview = document.getElementById('avatar-upload-preview');
+  const avatarUploadBtn = document.getElementById('avatar-upload-btn');
+  const avatarUploadInput = document.getElementById('avatar-upload-input');
+  const adminLinkRow = document.getElementById('admin-link-row');
+  const adminLinkBtn = document.getElementById('admin-link-btn');
   const settingsToggle = document.getElementById('settings-toggle');
   const settingsPanel = document.getElementById('settings-panel');
   const settingsClose = document.getElementById('settings-close');
@@ -961,6 +1406,36 @@
   if (savedColor) avatarColor.value = savedColor;
   else localStorage.setItem('sq_color', avatarColor.value);
 
+  // ---------- Speed-based vehicle icon ----------
+  const VEHICLE_SPEED_THRESHOLD_MPS = 8.33; // ~30 km/h
+  let vehicleType = localStorage.getItem('sq_vehicle') || null;
+  let vehiclePromptDismissedThisSession = false;
+  const vehiclePrompt = document.getElementById('vehicle-prompt');
+  const vehiclePromptDismiss = document.getElementById('vehicle-prompt-dismiss');
+  const VEHICLE_ICONS = {
+    car: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11l1.5-4.5A2 2 0 0 1 8.4 5h7.2a2 2 0 0 1 1.9 1.5L19 11"/><rect x="2" y="11" width="20" height="6" rx="2"/><circle cx="7" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/></svg>',
+    train: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="12" rx="2"/><path d="M4 11h16"/><path d="M8 19l-2 3"/><path d="M16 19l2 3"/><circle cx="8.5" cy="7.5" r="0.6" fill="currentColor" stroke="none"/><circle cx="15.5" cy="7.5" r="0.6" fill="currentColor" stroke="none"/></svg>',
+    bus: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M3 11h18"/><circle cx="7.5" cy="19.5" r="1.5"/><circle cx="16.5" cy="19.5" r="1.5"/></svg>'
+  };
+  document.querySelectorAll('.vehicle-choice-btn').forEach(btn => {
+    btn.innerHTML = VEHICLE_ICONS[btn.dataset.vehicle];
+    btn.addEventListener('click', () => {
+      vehicleType = btn.dataset.vehicle;
+      localStorage.setItem('sq_vehicle', vehicleType);
+      vehiclePrompt.classList.remove('show');
+    });
+  });
+  vehiclePromptDismiss.addEventListener('click', () => {
+    vehiclePromptDismissedThisSession = true;
+    vehiclePrompt.classList.remove('show');
+  });
+  function maybeShowVehiclePrompt(){
+    if (vehicleType || vehiclePromptDismissedThisSession) return;
+    if (ownSpeedMps != null && ownSpeedMps > VEHICLE_SPEED_THRESHOLD_MPS){
+      vehiclePrompt.classList.add('show');
+    }
+  }
+
   document.addEventListener('visibilitychange', () => {
     appHidden = document.visibilityState === 'hidden';
   });
@@ -991,6 +1466,199 @@
   let swRegistration = null;
   const pushWasEnabled = localStorage.getItem('sq_push_enabled') === 'on';
   notifToggle.checked = pushWasEnabled;
+
+  // ---------- Optional-feature toggles (compass / satellite / polls / waypoints) ----------
+  const featureCompassToggle = document.getElementById('feature-compass-toggle');
+  const featureSatelliteToggle = document.getElementById('feature-satellite-toggle');
+  const featurePollsToggle = document.getElementById('feature-polls-toggle');
+  const featureWaypointsToggle = document.getElementById('feature-waypoints-toggle');
+
+  let featureCompassOn = localStorage.getItem('sq_feature_compass') !== 'off';
+  let featureSatelliteOn = localStorage.getItem('sq_feature_satellite') !== 'off';
+  let featurePollsOn = localStorage.getItem('sq_feature_polls') !== 'off';
+  let featureWaypointsOn = localStorage.getItem('sq_feature_waypoints') !== 'off';
+
+  featureCompassToggle.checked = featureCompassOn;
+  featureSatelliteToggle.checked = featureSatelliteOn;
+  featurePollsToggle.checked = featurePollsOn;
+  featureWaypointsToggle.checked = featureWaypointsOn;
+
+  function applyFeatureVisibility(){
+    mapStyleToggle.style.display = featureSatelliteOn ? 'flex' : 'none';
+    pollBtn.style.display = featurePollsOn ? 'flex' : 'none';
+    waypointBtn.style.display = featureWaypointsOn ? 'flex' : 'none';
+    // compass visibility is handled per-chip at render time via featureCompassOn;
+    // if turned off while the compass panel happens to be open, close it immediately.
+    if (!featureCompassOn) compassPanel.classList.remove('open');
+  }
+  applyFeatureVisibility();
+
+  featureCompassToggle.addEventListener('change', () => {
+    featureCompassOn = featureCompassToggle.checked;
+    localStorage.setItem('sq_feature_compass', featureCompassOn ? 'on' : 'off');
+    applyFeatureVisibility();
+  });
+  featureSatelliteToggle.addEventListener('change', () => {
+    featureSatelliteOn = featureSatelliteToggle.checked;
+    localStorage.setItem('sq_feature_satellite', featureSatelliteOn ? 'on' : 'off');
+    applyFeatureVisibility();
+  });
+  featurePollsToggle.addEventListener('change', () => {
+    featurePollsOn = featurePollsToggle.checked;
+    localStorage.setItem('sq_feature_polls', featurePollsOn ? 'on' : 'off');
+    applyFeatureVisibility();
+  });
+  featureWaypointsToggle.addEventListener('change', () => {
+    featureWaypointsOn = featureWaypointsToggle.checked;
+    localStorage.setItem('sq_feature_waypoints', featureWaypointsOn ? 'on' : 'off');
+    applyFeatureVisibility();
+  });
+
+  // ---------- Account system (login / register / verify / Google / avatar) ----------
+  let pendingVerifyEmail = null;
+
+  function applyAccountUI(){
+    if (currentAccount){
+      accountStatusBar.style.display = 'flex';
+      openAccountBtn.style.display = 'none';
+      accountWelcomeText.textContent = t('welcomeBack', {name: currentAccount.username});
+      accountAvatarPreview.src = myAvatarUrl || '';
+      accountAvatarPreview.style.visibility = myAvatarUrl ? 'visible' : 'hidden';
+      if (!usernameInput.value.trim()) usernameInput.value = currentAccount.username;
+      avatarUploadRow.style.display = 'flex';
+      avatarUploadPreview.src = myAvatarUrl || '';
+      adminLinkRow.style.display = currentAccount.is_admin ? 'block' : 'none';
+    } else {
+      accountStatusBar.style.display = 'none';
+      openAccountBtn.style.display = 'block';
+      avatarUploadRow.style.display = 'none';
+      adminLinkRow.style.display = 'none';
+    }
+  }
+
+  async function checkAuth(){
+    try {
+      const r = await fetch('/auth/me', { credentials: 'same-origin' });
+      const data = await r.json();
+      if (data && data.logged_in){
+        currentAccount = { username: data.username, email: data.email, is_admin: !!data.is_admin };
+        myAvatarUrl = data.avatar_path || null;
+      } else {
+        currentAccount = null;
+        myAvatarUrl = null;
+      }
+    } catch (e) {
+      currentAccount = null;
+      myAvatarUrl = null;
+    }
+    applyAccountUI();
+  }
+  checkAuth();
+
+  function openAccountPanel(){ accountPanel.classList.add('open'); }
+  function closeAccountPanel(){
+    accountPanel.classList.remove('open');
+    loginError.textContent = ''; registerError.textContent = ''; verifyError.textContent = '';
+    loginForm.style.display = 'block'; registerForm.style.display = 'none'; verifyForm.style.display = 'none';
+    accountDivider.style.display = 'flex'; googleLoginBtn.style.display = 'flex';
+    tabLogin.classList.add('active'); tabRegister.classList.remove('active');
+  }
+  openAccountBtn.addEventListener('click', openAccountPanel);
+  accountClose.addEventListener('click', closeAccountPanel);
+
+  tabLogin.addEventListener('click', () => {
+    tabLogin.classList.add('active'); tabRegister.classList.remove('active');
+    loginForm.style.display = 'block'; registerForm.style.display = 'none'; verifyForm.style.display = 'none';
+    accountDivider.style.display = 'flex'; googleLoginBtn.style.display = 'flex';
+  });
+  tabRegister.addEventListener('click', () => {
+    tabRegister.classList.add('active'); tabLogin.classList.remove('active');
+    registerForm.style.display = 'block'; loginForm.style.display = 'none'; verifyForm.style.display = 'none';
+    accountDivider.style.display = 'flex'; googleLoginBtn.style.display = 'flex';
+  });
+
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    loginError.textContent = '';
+    try {
+      const r = await fetch('/auth/login', {
+        method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'same-origin',
+        body: JSON.stringify({email: loginEmail.value.trim(), password: loginPassword.value})
+      });
+      if (!r.ok){ loginError.textContent = t('loginError'); return; }
+      await checkAuth();
+      closeAccountPanel();
+    } catch (err) { loginError.textContent = t('loginError'); }
+  });
+
+  registerForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    registerError.textContent = '';
+    if (regPassword.value.length < 8){ registerError.textContent = t('passwordTooShort'); return; }
+    try {
+      const r = await fetch('/auth/register', {
+        method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'same-origin',
+        body: JSON.stringify({email: regEmail.value.trim(), username: regUsername.value.trim(), password: regPassword.value})
+      });
+      if (!r.ok){ registerError.textContent = t('registerError'); return; }
+      pendingVerifyEmail = regEmail.value.trim();
+      registerForm.style.display = 'none'; loginForm.style.display = 'none'; verifyForm.style.display = 'block';
+      accountDivider.style.display = 'none'; googleLoginBtn.style.display = 'none';
+    } catch (err) { registerError.textContent = t('registerError'); }
+  });
+
+  verifySubmit.addEventListener('click', async () => {
+    verifyError.textContent = '';
+    try {
+      const r = await fetch('/auth/verify', {
+        method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'same-origin',
+        body: JSON.stringify({email: pendingVerifyEmail, code: verifyCode.value.trim()})
+      });
+      if (!r.ok){ verifyError.textContent = t('verifyError'); return; }
+      await checkAuth();
+      closeAccountPanel();
+    } catch (err) { verifyError.textContent = t('verifyError'); }
+  });
+
+  resendCodeLink.addEventListener('click', async () => {
+    try {
+      await fetch('/auth/resend-code', {
+        method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'same-origin',
+        body: JSON.stringify({email: pendingVerifyEmail})
+      });
+      verifyError.textContent = t('codeResent');
+    } catch (err) { /* ignore */ }
+  });
+
+  googleLoginBtn.addEventListener('click', () => {
+    window.location.href = '/auth/google/login';
+  });
+
+  accountLogoutBtn.addEventListener('click', async () => {
+    try { await fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' }); } catch (e) {}
+    currentAccount = null; myAvatarUrl = null;
+    applyAccountUI();
+  });
+
+  avatarUploadBtn.addEventListener('click', () => avatarUploadInput.click());
+  avatarUploadInput.addEventListener('change', async () => {
+    const file = avatarUploadInput.files && avatarUploadInput.files[0];
+    if (!file) return;
+    const fd = new FormData();
+    fd.append('avatar', file);
+    try {
+      const r = await fetch('/auth/avatar', { method: 'POST', body: fd, credentials: 'same-origin' });
+      if (r.ok){
+        const data = await r.json();
+        myAvatarUrl = data.avatar_path;
+        avatarUploadPreview.src = myAvatarUrl;
+        accountAvatarPreview.src = myAvatarUrl;
+        accountAvatarPreview.style.visibility = 'visible';
+      }
+    } catch (err) { /* ignore, avatar upload is non-critical */ }
+  });
+
+  adminLinkBtn.addEventListener('click', () => { window.location.href = '/admin'; });
 
   function urlBase64ToUint8Array(base64String){
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -1130,25 +1798,30 @@
     showSpeaking._t = setTimeout(()=>speakingIndicator.classList.remove('show'), 2000);
   }
 
-  function markerIcon(isMe, color, initial, signalLost){
+  function markerIcon(isMe, color, initial, signalLost, avatar, vehicle, speedMps){
     const bg = color || (isMe ? 'var(--signal)' : 'var(--cyan)');
+    const inner = avatar
+      ? '<img class="dot avatar-dot" src="' + escapeHtml(avatar) + '" alt="" />'
+      : '<div class="dot" style="background:' + bg + '">' + (initial || '') + '</div>';
+    const showBadge = vehicle && VEHICLE_ICONS[vehicle] && speedMps != null && speedMps > VEHICLE_SPEED_THRESHOLD_MPS;
+    const badge = showBadge ? '<div class="vehicle-badge">' + VEHICLE_ICONS[vehicle].replace(/width="16" height="16"/, 'width="9" height="9"') + '</div>' : '';
     return L.divIcon({
       className: '',
       html: '<div class="squad-marker' + (isMe?' me':'') + (signalLost?' signal-lost':'') + '"><div class="ring"></div>' +
-        '<div class="dot" style="background:' + bg + '">' + (initial || '') + '</div></div>',
+        inner + badge + '</div>',
       iconSize: [16,16],
       iconAnchor: [8,8]
     });
   }
 
-  function upsertMarker(name, lat, lng, isMe, color, signalLost){
+  function upsertMarker(name, lat, lng, isMe, color, signalLost, avatar, vehicle, speedMps){
     lastKnown[name] = {lat, lng};
     const initial = name ? name.charAt(0).toUpperCase() : '';
     if (markers[name]){
       markers[name].setLatLng([lat, lng]);
-      markers[name].setIcon(markerIcon(isMe, color, initial, signalLost));
+      markers[name].setIcon(markerIcon(isMe, color, initial, signalLost, avatar, vehicle, speedMps));
     } else {
-      markers[name] = L.marker([lat, lng], {icon: markerIcon(isMe, color, initial, signalLost)})
+      markers[name] = L.marker([lat, lng], {icon: markerIcon(isMe, color, initial, signalLost, avatar, vehicle, speedMps)})
         .bindTooltip(escapeHtml(name), {permanent:true, direction:'top', offset:[0,-10], className:'marker-label'})
         .addTo(map);
     }
@@ -1259,7 +1932,7 @@
       }
       const navHtml = (!isMe && u.lat != null)
         ? '<a class="nav-link" href="geo:' + u.lat + ',' + u.lng + '?q=' + u.lat + ',' + u.lng + '" target="_blank">' + t('navigate') + '</a>' +
-          '<a class="nav-link compass-link" href="#" data-compass-lat="' + u.lat + '" data-compass-lng="' + u.lng + '" data-compass-name="' + escapeHtml(u.username) + '">' + t('compassBtn') + '</a>'
+          (featureCompassOn ? '<a class="nav-link compass-link" href="#" data-compass-lat="' + u.lat + '" data-compass-lng="' + u.lng + '" data-compass-name="' + escapeHtml(u.username) + '">' + t('compassBtn') + '</a>' : '')
         : '';
       const ownerBadgeHtml = u.is_owner ? '<span class="owner-badge">' + t('ownerBadge') + '</span>' : '';
       const kickHtml = (isOwner && !isMe)
@@ -1578,7 +2251,7 @@
     ws.onopen = () => {
       reconnectDelay = 1000;
       statusDot.classList.remove('offline','pulse');
-      ws.send(JSON.stringify({type:'join', username, room, password: roomPassword, color: avatarColor.value, device_id: deviceId}));
+      ws.send(JSON.stringify({type:'join', username, room, password: roomPassword, color: avatarColor.value, device_id: deviceId, avatar: myAvatarUrl}));
     };
 
     ws.onmessage = (evt) => {
@@ -1620,13 +2293,13 @@
       } else if (msg.type === 'presence'){
         const activeNames = new Set(msg.users.map(u => u.username));
         msg.users.forEach(u => {
-          if (u.lat != null) upsertMarker(u.username, u.lat, u.lng, u.username === username, u.color, u.username !== username && u.age_s != null && u.age_s > SIGNAL_LOST_THRESHOLD_S);
+          if (u.lat != null) upsertMarker(u.username, u.lat, u.lng, u.username === username, u.color, u.username !== username && u.age_s != null && u.age_s > SIGNAL_LOST_THRESHOLD_S, u.avatar, u.vehicle, u.speed_mps);
           if (compassTarget && u.username === compassTarget.name && u.lat != null){
             compassTarget.lat = u.lat;
             compassTarget.lng = u.lng;
             updateCompassArrow();
           }
-          if (u.username === username) ownSpeedMps = u.speed_mps;
+          if (u.username === username){ ownSpeedMps = u.speed_mps; maybeShowVehiclePrompt(); }
         });
         removeStaleMarkers(activeNames);
         renderHud(msg.users);
@@ -1693,6 +2366,9 @@
     }
   }
 
+  let accuracyCircle = null;
+  const GPS_ACCURACY_REJECT_M = 300; // fixes worse than this are almost certainly IP/cell fallback, not real GPS - skip broadcasting them
+
   function startGeolocation(){
     if (watchId !== null) return;
     if (!navigator.geolocation){
@@ -1702,7 +2378,7 @@
     signalLostInterval = setInterval(checkOwnSignalLoss, 15000);
     watchId = navigator.geolocation.watchPosition(
       (pos) => {
-        const {latitude, longitude} = pos.coords;
+        const {latitude, longitude, accuracy} = pos.coords;
         selfLatLng = {lat:latitude, lng:longitude};
         lastFixTimestamp = Date.now();
         gpsLostBanner.classList.remove('show');
@@ -1711,14 +2387,28 @@
           map.setView([latitude, longitude], 16);
           map._initialCentered = true;
         }
+        if (map && typeof L.circle === 'function' && accuracy != null){
+          if (accuracyCircle){
+            accuracyCircle.setLatLng([latitude, longitude]).setRadius(accuracy);
+          } else {
+            accuracyCircle = L.circle([latitude, longitude], {
+              radius: accuracy, color: 'var(--cyan)', weight: 1, fillColor: 'var(--cyan)', fillOpacity: 0.08, interactive: false
+            }).addTo(map);
+          }
+        }
+        // Skip broadcasting fixes so imprecise they're almost certainly not real GPS
+        // (e.g. IP-based fallback indoors) - keeps everyone else's view accurate rather
+        // than showing a marker that jumped hundreds of meters off.
+        if (accuracy != null && accuracy > GPS_ACCURACY_REJECT_M) return;
         if (ws && ws.readyState === WebSocket.OPEN){
           const payload = {type:'location', lat:latitude, lng:longitude};
           if (batteryLevel != null) payload.battery = batteryLevel;
+          if (vehicleType) payload.vehicle = vehicleType;
           ws.send(JSON.stringify(payload));
         }
       },
       (err) => { showToast(t('geoError', {err: err.message})); checkOwnSignalLoss(); },
-      { enableHighAccuracy:true, maximumAge:2000, timeout:15000 }
+      { enableHighAccuracy:true, maximumAge:1000, timeout:15000 }
     );
   }
 

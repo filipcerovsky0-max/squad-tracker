@@ -298,6 +298,8 @@ async def broadcast_presence(room_id):
             "lng": data["lng"],
             "battery": data.get("battery"),
             "color": data.get("color"),
+            "avatar": data.get("avatar"),
+            "vehicle": data.get("vehicle"),
             "age_s": round(now - data["last_location_ts"]) if data["last_location_ts"] else None,
             "speed_mps": data.get("speed_mps"),
             "distance_m": round(data.get("distance_m", 0)),
@@ -408,6 +410,9 @@ async def websocket_handler(request):
                 color = data.get("color")
                 if not isinstance(color, str) or not color.startswith("#") or len(color) not in (4, 7):
                     color = None
+                avatar = data.get("avatar")
+                if not isinstance(avatar, str) or not avatar.startswith("/avatars/") or len(avatar) > 128:
+                    avatar = None
                 device_id = data.get("device_id")
                 device_id = str(device_id)[:64] if device_id else None
 
@@ -444,6 +449,8 @@ async def websocket_handler(request):
                     "lat": None,
                     "lng": None,
                     "color": color,
+                    "avatar": avatar,
+                    "vehicle": None,
                     "last_location_ts": 0,
                     "last_seen": time.time(),
                     "prev_lat": None,
@@ -504,6 +511,11 @@ async def websocket_handler(request):
                 battery = data.get("battery")
                 if isinstance(battery, (int, float)):
                     entry["battery"] = max(0, min(100, round(battery)))
+                vehicle = data.get("vehicle")
+                if vehicle in ("car", "train", "bus"):
+                    entry["vehicle"] = vehicle
+                elif vehicle is None:
+                    pass  # keep whatever was set before (client only sends it when relevant)
                 entry["last_location_ts"] = now
                 entry["last_seen"] = now
                 save_history(room_id, entry["username"], lat, lng)
@@ -798,6 +810,17 @@ async def security_headers_middleware(request, handler):
     return response
 
 
+@web.middleware
+async def custom_404_middleware(request, handler):
+    try:
+        response = await handler(request)
+        if response.status == 404:
+            return web.FileResponse(FRONTEND_DIR / "404.html", status=404)
+        return response
+    except web.HTTPNotFound:
+        return web.FileResponse(FRONTEND_DIR / "404.html", status=404)
+
+
 async def start_background_tasks(app):
     app["reaper"] = asyncio.create_task(stale_connection_reaper(app))
 
@@ -814,10 +837,25 @@ async def admin_page(request):
     return web.FileResponse(FRONTEND_DIR / "admin.html")
 
 
+async def static_or_404(request):
+    """Serves any real file under FRONTEND_DIR, or the custom 404 page for
+    anything else. Replaces app.router.add_static(), whose own internal
+    404 handling conflicts with custom_404_middleware and silently returns
+    an empty body instead of our page."""
+    rel_path = request.match_info.get("tail", "")
+    root = FRONTEND_DIR.resolve()
+    candidate = (root / rel_path).resolve()
+    if root != candidate and root not in candidate.parents:
+        return web.FileResponse(FRONTEND_DIR / "404.html", status=404)
+    if candidate.is_file():
+        return web.FileResponse(candidate)
+    return web.FileResponse(FRONTEND_DIR / "404.html", status=404)
+
+
 def create_app():
     init_db()
-    accounts.init(DB_PATH, BASE_DIR / "avatars")
-    app = web.Application(middlewares=[security_headers_middleware])
+    accounts.init(BASE_DIR / "accounts.db", BASE_DIR / "avatars")
+    app = web.Application(middlewares=[security_headers_middleware, custom_404_middleware])
     app.router.add_get("/health", health)
     app.router.add_get("/vapid-public-key", vapid_public_key)
     app.router.add_get("/admin/stats", admin_stats)
@@ -825,7 +863,7 @@ def create_app():
     app.router.add_get("/", index)
     accounts.register_routes(app, sys.modules[__name__])
     app.router.add_get("/admin", admin_page)
-    app.router.add_static("/", FRONTEND_DIR, show_index=False)
+    app.router.add_get("/{tail:.*}", static_or_404)
     app.on_startup.append(start_background_tasks)
     app.on_cleanup.append(cleanup_background_tasks)
     return app

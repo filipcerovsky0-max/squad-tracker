@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Squad Tracker - Admin</title>
+<style>
+  :root{
+    --ink:#0a0d0c; --panel:#10161371; --panel-2:#141a18; --line:#22322b;
+    --signal:#ffb454; --cyan:#4cc9f0; --danger:#ff5d5d; --text:#e7ede9; --text-dim:#7c8f89;
+    --mono:'Courier New', monospace;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; background:var(--ink); color:var(--text); font-family:var(--mono);
+    min-height:100vh; padding:20px;
+  }
+  h1{ color:var(--signal); font-size:20px; letter-spacing:.05em; margin:0 0 4px; }
+  .sub{ color:var(--text-dim); font-size:12px; margin-bottom:24px; }
+  #login-gate{ text-align:center; padding:80px 20px; }
+  #login-gate button{
+    background:var(--signal); color:#0a0d0c; border:none; padding:12px 24px;
+    font-family:var(--mono); font-weight:700; border-radius:4px; font-size:14px; cursor:pointer;
+  }
+  #denied{ color:var(--danger); margin-top:16px; font-size:13px; display:none; }
+  #dashboard{ display:none; }
+  #stats-row{ display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
+  .stat-box{
+    background:var(--panel-2); border:1px solid var(--line); border-radius:6px;
+    padding:12px 18px; min-width:120px;
+  }
+  .stat-box .num{ font-size:24px; color:var(--signal); font-weight:700; }
+  .stat-box .lbl{ font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.05em; }
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  th{ text-align:left; color:var(--text-dim); font-size:11px; text-transform:uppercase; padding:8px; border-bottom:1px solid var(--line); }
+  td{ padding:10px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .room-id{ color:var(--cyan); font-weight:700; }
+  .members{ color:var(--text-dim); font-size:12px; }
+  .member-chip{
+    display:inline-block; background:var(--panel-2); border:1px solid var(--line); border-radius:3px;
+    padding:2px 8px; margin:2px 3px 2px 0; font-size:11px;
+  }
+  .kick-x{ color:var(--danger); cursor:pointer; margin-left:4px; }
+  .badge{ font-size:10px; padding:2px 6px; border-radius:3px; margin-right:4px; }
+  .badge.pw{ background:rgba(255,180,84,0.15); color:var(--signal); }
+  .badge.poll{ background:rgba(76,201,240,0.15); color:var(--cyan); }
+  button.close-btn{
+    background:transparent; color:var(--danger); border:1px solid var(--danger); border-radius:3px;
+    padding:6px 12px; font-family:var(--mono); font-size:11px; cursor:pointer;
+  }
+  #empty-state{ color:var(--text-dim); text-align:center; padding:40px; display:none; }
+  #refresh-note{ color:var(--text-dim); font-size:11px; margin-top:16px; }
+</style>
+</head>
+<body>
+
+  <div id="login-gate">
+    <h1>// SQUAD TRACKER ADMIN</h1>
+    <p class="sub">Sign in with the admin Google account to continue.</p>
+    <button id="google-login-btn">Sign in with Google</button>
+    <p id="denied">Access denied - this account is not the admin account.</p>
+  </div>
+
+  <div id="dashboard">
+    <h1>// SQUAD TRACKER ADMIN</h1>
+    <p class="sub" id="admin-email"></p>
+
+    <div id="stats-row">
+      <div class="stat-box"><div class="num" id="stat-rooms">-</div><div class="lbl">Active rooms</div></div>
+      <div class="stat-box"><div class="num" id="stat-members">-</div><div class="lbl">People online</div></div>
+      <div class="stat-box"><div class="num" id="stat-messages">-</div><div class="lbl">Messages (session)</div></div>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>Room</th><th>Members</th><th>Flags</th><th></th></tr>
+      </thead>
+      <tbody id="rooms-tbody"></tbody>
+    </table>
+    <div id="empty-state">No active rooms right now.</div>
+    <p id="refresh-note">Auto-refreshes every 10s.</p>
+  </div>
+
+<script>
+  async function api(path, opts){
+    const res = await fetch(path, Object.assign({credentials:'include'}, opts || {}));
+    return res;
+  }
+
+  document.getElementById('google-login-btn').addEventListener('click', () => {
+    window.location.href = '/auth/google/login';
+  });
+
+  function escapeHtml(str){
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  async function loadRooms(){
+    const res = await api('/admin/api/rooms');
+    if (res.status === 403){
+      document.getElementById('login-gate').style.display = 'block';
+      document.getElementById('dashboard').style.display = 'none';
+      document.getElementById('denied').style.display = 'block';
+      return;
+    }
+    const data = await res.json();
+    const rooms = data.rooms || [];
+
+    document.getElementById('stat-rooms').textContent = rooms.length;
+    document.getElementById('stat-members').textContent = rooms.reduce((s,r)=>s+r.member_count,0);
+    document.getElementById('stat-messages').textContent = rooms.reduce((s,r)=>s+r.message_count,0);
+
+    const tbody = document.getElementById('rooms-tbody');
+    tbody.innerHTML = '';
+    document.getElementById('empty-state').style.display = rooms.length ? 'none' : 'block';
+
+    rooms.forEach(room => {
+      const tr = document.createElement('tr');
+      const membersHtml = room.usernames.map(u =>
+        '<span class="member-chip">' + escapeHtml(u) + '<span class="kick-x" data-room="' + escapeHtml(room.room_id) + '" data-user="' + escapeHtml(u) + '">x</span></span>'
+      ).join('');
+      let flagsHtml = '';
+      if (room.has_password) flagsHtml += '<span class="badge pw">PW</span>';
+      if (room.has_active_poll) flagsHtml += '<span class="badge poll">POLL</span>';
+      if (room.waypoint_count) flagsHtml += '<span class="badge poll">' + room.waypoint_count + ' STOPS</span>';
+      tr.innerHTML =
+        '<td class="room-id">' + escapeHtml(room.room_id) + '</td>' +
+        '<td class="members">' + membersHtml + '</td>' +
+        '<td>' + flagsHtml + '</td>' +
+        '<td><button class="close-btn" data-room="' + escapeHtml(room.room_id) + '">Close room</button></td>';
+      tbody.appendChild(tr);
+    });
+
+    tbody.querySelectorAll('.kick-x').forEach(el => {
+      el.addEventListener('click', async () => {
+        await api('/admin/api/rooms/' + encodeURIComponent(el.dataset.room) + '/kick/' + encodeURIComponent(el.dataset.user), {method:'POST'});
+        loadRooms();
+      });
+    });
+    tbody.querySelectorAll('.close-btn').forEach(el => {
+      el.addEventListener('click', async () => {
+        if (!confirm('Close room "' + el.dataset.room + '" and disconnect everyone?')) return;
+        await api('/admin/api/rooms/' + encodeURIComponent(el.dataset.room) + '/close', {method:'POST'});
+        loadRooms();
+      });
+    });
+  }
+
+  async function init(){
+    const meRes = await api('/auth/me');
+    const me = await meRes.json();
+    if (!me.logged_in || !me.is_admin){
+      document.getElementById('login-gate').style.display = 'block';
+      if (me.logged_in && !me.is_admin) document.getElementById('denied').style.display = 'block';
+      return;
+    }
+    document.getElementById('login-gate').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    document.getElementById('admin-email').textContent = me.email;
+    loadRooms();
+    setInterval(loadRooms, 10000);
+  }
+  init();
+</script>
+</body>
+</html>
