@@ -510,6 +510,32 @@
   #admin-link-btn{
     width:100%; background:transparent; border:1px solid var(--cyan); color:var(--cyan); font-size:12px; padding:10px;
   }
+
+  /* ---------- avatar crop panel ---------- */
+  #avatar-crop-panel{
+    position:absolute; inset:0; z-index:1400; background:rgba(6,8,7,0.98);
+    display:none; flex-direction:column; align-items:center; justify-content:center; padding:24px;
+  }
+  #avatar-crop-panel.open{ display:flex; }
+  #crop-stage{
+    position:relative; width:260px; height:260px; border-radius:50%; overflow:hidden;
+    background:#000; border:1px solid var(--line); touch-action:none; cursor:grab;
+  }
+  #crop-stage.dragging{ cursor:grabbing; }
+  #crop-image{
+    position:absolute; top:0; left:0; max-width:none; max-height:none;
+    transform-origin:0 0; user-select:none; -webkit-user-drag:none; pointer-events:none;
+  }
+  #crop-mask{
+    position:absolute; inset:0; border-radius:50%; box-shadow:0 0 0 2000px rgba(6,8,7,0.55) inset;
+    border:2px solid var(--signal); pointer-events:none;
+  }
+  #crop-zoom-row{ display:flex; align-items:center; gap:10px; width:260px; margin-top:20px; color:var(--text-dim); }
+  #crop-zoom-slider{ flex:1; accent-color:var(--signal); }
+  #crop-btn-row{ display:flex; gap:10px; width:260px; margin-top:20px; }
+  #crop-btn-row button{ flex:1; margin:0; }
+  #crop-cancel-btn{ background:transparent; border:1px solid var(--line); color:var(--text-dim); padding:11px; font-size:12px; }
+  #crop-confirm-btn{ background:var(--signal); color:#0a0d0c; font-weight:700; border:none; padding:11px; font-size:12px; }
 </style>
 </head>
 <body>
@@ -671,6 +697,23 @@
     <div id="stats-block"></div>
   </div>
 
+  <!-- AVATAR CROP PANEL -->
+  <div id="avatar-crop-panel">
+    <p class="eyebrow" id="t-crop-title"></p>
+    <div id="crop-stage">
+      <img id="crop-image" alt="" draggable="false" />
+      <div id="crop-mask"></div>
+    </div>
+    <div id="crop-zoom-row">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10" cy="10" r="6"/><line x1="21" y1="21" x2="14.65" y2="14.65"/></svg>
+      <input type="range" id="crop-zoom-slider" min="100" max="300" value="100" />
+    </div>
+    <div id="crop-btn-row">
+      <button type="button" id="crop-cancel-btn"></button>
+      <button type="button" id="crop-confirm-btn"></button>
+    </div>
+  </div>
+
   <!-- POLL CREATE PANEL -->
   <div id="poll-create-panel">
     <button id="poll-create-close">X</button>
@@ -828,6 +871,9 @@
       featureSatelliteLabel: 'Prepinac satelitni mapy',
       featurePollsLabel: 'Ankety',
       featureWaypointsLabel: 'Zastavky na trase',
+      cropTitle: 'Uprav profilovku',
+      cropCancel: 'Zrusit',
+      cropConfirm: 'Pouzit',
       passwordTooShort: 'Heslo musi mit alespon 8 znaku.'
     },
     en: {
@@ -894,6 +940,9 @@
       featureSatelliteLabel: 'Satellite map toggle',
       featurePollsLabel: 'Polls',
       featureWaypointsLabel: 'Route stops',
+      cropTitle: 'Edit profile picture',
+      cropCancel: 'Cancel',
+      cropConfirm: 'Use this',
       passwordTooShort: 'Password must be at least 8 characters.'
     },
     fr: {
@@ -960,6 +1009,9 @@
       featureSatelliteLabel: 'Bascule carte satellite',
       featurePollsLabel: 'Sondages',
       featureWaypointsLabel: 'Arrets d\'itineraire',
+      cropTitle: 'Modifier la photo de profil',
+      cropCancel: 'Annuler',
+      cropConfirm: 'Utiliser',
       passwordTooShort: 'Le mot de passe doit contenir au moins 8 caracteres.'
     },
     es: {
@@ -1026,6 +1078,9 @@
       featureSatelliteLabel: 'Alternar mapa satelital',
       featurePollsLabel: 'Encuestas',
       featureWaypointsLabel: 'Paradas de ruta',
+      cropTitle: 'Editar foto de perfil',
+      cropCancel: 'Cancelar',
+      cropConfirm: 'Usar',
       passwordTooShort: 'La contrasena debe tener al menos 8 caracteres.'
     },
     ar: {
@@ -1092,6 +1147,9 @@
       featureSatelliteLabel: 'تبديل الخريطة الفضائية',
       featurePollsLabel: 'استطلاعات',
       featureWaypointsLabel: 'محطات المسار',
+      cropTitle: 'تعديل صورة الملف الشخصي',
+      cropCancel: 'الغاء',
+      cropConfirm: 'استخدام',
       passwordTooShort: 'يجب أن تكون كلمة المرور 8 أحرف على الأقل.'
     },
     hi: {
@@ -1158,6 +1216,9 @@
       featureSatelliteLabel: 'सैटेलाइट मैप टॉगल',
       featurePollsLabel: 'सर्वेक्षण',
       featureWaypointsLabel: 'मार्ग स्टॉप',
+      cropTitle: 'प्रोफ़ाइल फोटो संपादित करें',
+      cropCancel: 'रद्द करें',
+      cropConfirm: 'उपयोग करें',
       passwordTooShort: 'पासवर्ड कम से कम 8 अक्षर का होना चाहिए।'
     }
   };
@@ -1251,6 +1312,9 @@
     document.getElementById('t-feature-satellite-label').textContent = t('featureSatelliteLabel');
     document.getElementById('t-feature-polls-label').textContent = t('featurePollsLabel');
     document.getElementById('t-feature-waypoints-label').textContent = t('featureWaypointsLabel');
+    document.getElementById('t-crop-title').textContent = t('cropTitle');
+    document.getElementById('crop-cancel-btn').textContent = t('cropCancel');
+    document.getElementById('crop-confirm-btn').textContent = t('cropConfirm');
     if (currentAccount) {
       document.getElementById('account-welcome-text').textContent = t('welcomeBack', {name: currentAccount.username});
     }
@@ -1331,6 +1395,12 @@
   const avatarUploadPreview = document.getElementById('avatar-upload-preview');
   const avatarUploadBtn = document.getElementById('avatar-upload-btn');
   const avatarUploadInput = document.getElementById('avatar-upload-input');
+  const avatarCropPanel = document.getElementById('avatar-crop-panel');
+  const cropStage = document.getElementById('crop-stage');
+  const cropImage = document.getElementById('crop-image');
+  const cropZoomSlider = document.getElementById('crop-zoom-slider');
+  const cropCancelBtn = document.getElementById('crop-cancel-btn');
+  const cropConfirmBtn = document.getElementById('crop-confirm-btn');
   const adminLinkRow = document.getElementById('admin-link-row');
   const adminLinkBtn = document.getElementById('admin-link-btn');
   const settingsToggle = document.getElementById('settings-toggle');
@@ -1515,7 +1585,7 @@
   });
 
   // ---------- Account system (login / register / verify / Google / avatar) ----------
-  let pendingVerifyEmail = null;
+  let pendingVerifyUserId = null;
 
   function applyAccountUI(){
     if (currentAccount){
@@ -1542,7 +1612,7 @@
       const data = await r.json();
       if (data && data.logged_in){
         currentAccount = { username: data.username, email: data.email, is_admin: !!data.is_admin };
-        myAvatarUrl = data.avatar_path || null;
+        myAvatarUrl = data.avatar || null;
       } else {
         currentAccount = null;
         myAvatarUrl = null;
@@ -1601,7 +1671,8 @@
         body: JSON.stringify({email: regEmail.value.trim(), username: regUsername.value.trim(), password: regPassword.value})
       });
       if (!r.ok){ registerError.textContent = t('registerError'); return; }
-      pendingVerifyEmail = regEmail.value.trim();
+      const regData = await r.json();
+      pendingVerifyUserId = regData.user_id;
       registerForm.style.display = 'none'; loginForm.style.display = 'none'; verifyForm.style.display = 'block';
       accountDivider.style.display = 'none'; googleLoginBtn.style.display = 'none';
     } catch (err) { registerError.textContent = t('registerError'); }
@@ -1612,7 +1683,7 @@
     try {
       const r = await fetch('/auth/verify', {
         method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'same-origin',
-        body: JSON.stringify({email: pendingVerifyEmail, code: verifyCode.value.trim()})
+        body: JSON.stringify({user_id: pendingVerifyUserId, code: verifyCode.value.trim()})
       });
       if (!r.ok){ verifyError.textContent = t('verifyError'); return; }
       await checkAuth();
@@ -1624,7 +1695,7 @@
     try {
       await fetch('/auth/resend-code', {
         method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'same-origin',
-        body: JSON.stringify({email: pendingVerifyEmail})
+        body: JSON.stringify({user_id: pendingVerifyUserId})
       });
       verifyError.textContent = t('codeResent');
     } catch (err) { /* ignore */ }
@@ -1641,21 +1712,120 @@
   });
 
   avatarUploadBtn.addEventListener('click', () => avatarUploadInput.click());
-  avatarUploadInput.addEventListener('change', async () => {
+
+  // ---------- Avatar crop UI (Instagram-style pan + zoom in a circle) ----------
+  const CROP_STAGE_SIZE = 260;
+  const CROP_OUTPUT_SIZE = 400;
+  let cropImgNaturalW = 0, cropImgNaturalH = 0;
+  let cropBaseScale = 1, cropScale = 1, cropOffsetX = 0, cropOffsetY = 0;
+  let cropDragging = false, cropDragStartX = 0, cropDragStartY = 0, cropStartOffsetX = 0, cropStartOffsetY = 0;
+
+  function clampCropOffsets(){
+    const w = cropImgNaturalW * cropScale, h = cropImgNaturalH * cropScale;
+    const minX = CROP_STAGE_SIZE - w, minY = CROP_STAGE_SIZE - h;
+    cropOffsetX = Math.min(0, Math.max(minX, cropOffsetX));
+    cropOffsetY = Math.min(0, Math.max(minY, cropOffsetY));
+  }
+
+  function applyCropTransform(){
+    cropImage.style.transform = 'translate(' + cropOffsetX + 'px,' + cropOffsetY + 'px) scale(' + cropScale + ')';
+  }
+
+  function openCropPanel(file){
+    const reader = new FileReader();
+    reader.onload = () => {
+      cropImage.onload = () => {
+        cropImgNaturalW = cropImage.naturalWidth;
+        cropImgNaturalH = cropImage.naturalHeight;
+        cropBaseScale = Math.max(CROP_STAGE_SIZE / cropImgNaturalW, CROP_STAGE_SIZE / cropImgNaturalH);
+        cropZoomSlider.value = 100;
+        cropScale = cropBaseScale;
+        cropOffsetX = (CROP_STAGE_SIZE - cropImgNaturalW * cropScale) / 2;
+        cropOffsetY = (CROP_STAGE_SIZE - cropImgNaturalH * cropScale) / 2;
+        clampCropOffsets();
+        applyCropTransform();
+        avatarCropPanel.classList.add('open');
+      };
+      cropImage.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  avatarUploadInput.addEventListener('change', () => {
     const file = avatarUploadInput.files && avatarUploadInput.files[0];
     if (!file) return;
-    const fd = new FormData();
-    fd.append('avatar', file);
-    try {
-      const r = await fetch('/auth/avatar', { method: 'POST', body: fd, credentials: 'same-origin' });
-      if (r.ok){
-        const data = await r.json();
-        myAvatarUrl = data.avatar_path;
-        avatarUploadPreview.src = myAvatarUrl;
-        accountAvatarPreview.src = myAvatarUrl;
-        accountAvatarPreview.style.visibility = 'visible';
-      }
-    } catch (err) { /* ignore, avatar upload is non-critical */ }
+    openCropPanel(file);
+  });
+
+  function cropPointerDown(e){
+    cropDragging = true;
+    cropStage.classList.add('dragging');
+    const p = e.touches ? e.touches[0] : e;
+    cropDragStartX = p.clientX; cropDragStartY = p.clientY;
+    cropStartOffsetX = cropOffsetX; cropStartOffsetY = cropOffsetY;
+  }
+  function cropPointerMove(e){
+    if (!cropDragging) return;
+    const p = e.touches ? e.touches[0] : e;
+    cropOffsetX = cropStartOffsetX + (p.clientX - cropDragStartX);
+    cropOffsetY = cropStartOffsetY + (p.clientY - cropDragStartY);
+    clampCropOffsets();
+    applyCropTransform();
+    if (e.cancelable) e.preventDefault();
+  }
+  function cropPointerUp(){
+    cropDragging = false;
+    cropStage.classList.remove('dragging');
+  }
+  cropStage.addEventListener('mousedown', cropPointerDown);
+  cropStage.addEventListener('touchstart', cropPointerDown, {passive:true});
+  window.addEventListener('mousemove', cropPointerMove);
+  window.addEventListener('touchmove', cropPointerMove, {passive:false});
+  window.addEventListener('mouseup', cropPointerUp);
+  window.addEventListener('touchend', cropPointerUp);
+
+  cropZoomSlider.addEventListener('input', () => {
+    const zoomFactor = parseInt(cropZoomSlider.value, 10) / 100;
+    // keep the center of the visible circle anchored while zooming
+    const cx = CROP_STAGE_SIZE / 2, cy = CROP_STAGE_SIZE / 2;
+    const imgCx = (cx - cropOffsetX) / cropScale, imgCy = (cy - cropOffsetY) / cropScale;
+    cropScale = cropBaseScale * zoomFactor;
+    cropOffsetX = cx - imgCx * cropScale;
+    cropOffsetY = cy - imgCy * cropScale;
+    clampCropOffsets();
+    applyCropTransform();
+  });
+
+  function closeCropPanel(){
+    avatarCropPanel.classList.remove('open');
+    avatarUploadInput.value = '';
+  }
+  cropCancelBtn.addEventListener('click', closeCropPanel);
+
+  cropConfirmBtn.addEventListener('click', async () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = CROP_OUTPUT_SIZE;
+    canvas.height = CROP_OUTPUT_SIZE;
+    const ctx = canvas.getContext('2d');
+    const ratio = CROP_OUTPUT_SIZE / CROP_STAGE_SIZE;
+    const drawScale = cropScale * ratio;
+    ctx.drawImage(cropImage, cropOffsetX * ratio, cropOffsetY * ratio, cropImgNaturalW * drawScale, cropImgNaturalH * drawScale);
+    canvas.toBlob(async (blob) => {
+      if (!blob) { closeCropPanel(); return; }
+      const fd = new FormData();
+      fd.append('avatar', blob, 'avatar.jpg');
+      try {
+        const r = await fetch('/auth/avatar', { method: 'POST', body: fd, credentials: 'same-origin' });
+        if (r.ok){
+          const data = await r.json();
+          myAvatarUrl = data.avatar;
+          avatarUploadPreview.src = myAvatarUrl;
+          accountAvatarPreview.src = myAvatarUrl;
+          accountAvatarPreview.style.visibility = 'visible';
+        }
+      } catch (err) { /* ignore, avatar upload is non-critical */ }
+      closeCropPanel();
+    }, 'image/jpeg', 0.87);
   });
 
   adminLinkBtn.addEventListener('click', () => { window.location.href = '/admin'; });
