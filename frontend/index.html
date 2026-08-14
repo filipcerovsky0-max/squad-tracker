@@ -292,7 +292,7 @@
   }
   #poll-create-panel.open{ display:flex; }
   #poll-create-panel input{ margin:0; }
-  #poll-create-close{ position:absolute; top:14px; right:14px; width:auto; background:transparent; border:1px solid var(--line); padding:6px 12px; font-size:12px; }
+  #poll-create-close{ position:absolute; top:14px; right:14px; width:auto; background:transparent; border:1.5px solid var(--danger); color:var(--danger); font-weight:700; padding:6px 12px; font-size:12px; border-radius:3px; }
   #poll-question-input{ margin-top:20px !important; }
 
   #poll-card{
@@ -337,7 +337,7 @@
   }
   #share-panel .row{ display:flex; gap:8px; margin-top:14px; width:100%; max-width:320px; }
   #share-panel button{ margin:0; }
-  #share-close{ position:absolute; top:14px; right:14px; width:auto; background:transparent; border:1px solid var(--line); padding:6px 12px; font-size:12px; }
+  #share-close{ position:absolute; top:14px; right:14px; width:auto; background:transparent; border:1.5px solid var(--danger); color:var(--danger); font-weight:700; padding:6px 12px; font-size:12px; border-radius:3px; }
 
   /* ---------- avatar color + custom marker ---------- */
   .color-row{ display:flex; align-items:center; gap:10px; margin-top:14px; }
@@ -396,7 +396,7 @@
     display:none; flex-direction:column; align-items:center; justify-content:center; padding:24px; text-align:center;
   }
   #compass-panel.open{ display:flex; }
-  #compass-close{ position:absolute; top:14px; right:14px; width:auto; background:transparent; border:1px solid var(--line); padding:6px 12px; font-size:12px; }
+  #compass-close{ position:absolute; top:14px; right:14px; width:auto; background:transparent; border:1.5px solid var(--danger); color:var(--danger); font-weight:700; padding:6px 12px; font-size:12px; border-radius:3px; }
   #compass-dial{
     position:relative; width:220px; height:220px; border-radius:50%; margin:24px 0;
     border:2px solid var(--line); background:radial-gradient(circle, rgba(255,180,84,0.06), transparent 70%);
@@ -457,7 +457,7 @@
     border-bottom:1px solid var(--line); font-family:var(--mono); font-size:13px; color:var(--text);
   }
   #settings-panel .setting-row input[type="checkbox"]{ width:auto; margin:0; accent-color:var(--signal); }
-  #settings-close{ position:absolute; top:14px; right:14px; width:auto; background:transparent; border:1px solid var(--line); padding:6px 12px; font-size:12px; }
+  #settings-close{ position:absolute; top:14px; right:14px; width:auto; background:transparent; border:1.5px solid var(--danger); color:var(--danger); font-weight:700; padding:6px 12px; font-size:12px; border-radius:3px; }
   #stats-block{ margin-top:20px; font-family:var(--mono); font-size:12px; color:var(--text-dim); line-height:1.8; }
   #change-password-row{ display:flex; gap:8px; margin-top:16px; }
   #leave-room-btn{
@@ -465,6 +465,23 @@
     font-size:12px; padding:11px; font-weight:700;
   }
   #leave-room-btn:hover{ background:var(--danger); color:#0a0d0c; }
+
+  /* ---------- account settings (logged-in users) ---------- */
+  #account-settings-block label{ display:block; font-family:var(--mono); font-size:11px; color:var(--text-dim); margin:12px 0 4px; }
+  #account-username-row{ display:flex; gap:8px; margin-top:4px; }
+  #account-username-row input{ flex:1; margin:0; }
+  #account-username-row button{ width:auto; margin:0; padding:0 14px; }
+  #account-password-save-btn{ margin-top:12px; }
+  #account-delete-toggle-btn{
+    margin-top:22px; background:transparent; border:1px solid var(--danger); color:var(--danger);
+    font-size:12px; padding:10px;
+  }
+  #account-delete-toggle-btn:hover{ background:var(--danger); color:#0a0d0c; }
+  #account-delete-confirm-row{ margin-top:10px; }
+  #account-delete-confirm-row input{ margin-bottom:8px; }
+  #account-delete-btn{
+    width:100%; background:var(--danger); color:#0a0d0c; border:none; font-weight:700; padding:11px; font-size:12px;
+  }
   #change-password-row input{ flex:1; margin:0; }
   #change-password-row button{ width:auto; margin:0; padding:0 16px; }
 
@@ -491,7 +508,7 @@
     display:none; flex-direction:column; padding:24px; overflow-y:auto;
   }
   #account-panel.open{ display:flex; }
-  #account-close{ position:absolute; top:14px; right:14px; width:auto; background:transparent; border:1px solid var(--line); padding:6px 12px; font-size:12px; }
+  #account-close{ position:absolute; top:14px; right:14px; width:auto; background:transparent; border:1.5px solid var(--danger); color:var(--danger); font-weight:700; padding:6px 12px; font-size:12px; border-radius:3px; }
   #account-tabs{ display:flex; gap:8px; margin:12px 0 20px; }
   .account-tab{
     flex:1; margin:0; background:transparent; border:1px solid var(--line); color:var(--text-dim);
@@ -706,6 +723,28 @@
       <button id="avatar-upload-btn" type="button"></button>
       <input type="file" id="avatar-upload-input" accept="image/*" style="display:none;" />
     </div>
+    <div id="account-settings-block" style="display:none;">
+      <p class="eyebrow" id="t-account-settings-title" style="margin-top:18px;"></p>
+      <div id="account-username-row">
+        <input type="text" id="account-username-input" maxlength="32" />
+        <button type="button" id="account-username-save-btn"></button>
+      </div>
+      <p class="form-error" id="account-username-error"></p>
+
+      <label id="t-account-current-password-label" for="account-current-password-input"></label>
+      <input type="password" id="account-current-password-input" maxlength="64" autocomplete="current-password" />
+      <label id="t-account-new-password-label" for="account-new-password-input"></label>
+      <input type="password" id="account-new-password-input" maxlength="64" autocomplete="new-password" />
+      <button type="button" id="account-password-save-btn"></button>
+      <p class="form-error" id="account-password-error"></p>
+
+      <button type="button" id="account-delete-toggle-btn"></button>
+      <div id="account-delete-confirm-row" style="display:none;">
+        <input type="password" id="account-delete-password-input" maxlength="64" autocomplete="current-password" />
+        <button type="button" id="account-delete-btn"></button>
+        <p class="form-error" id="account-delete-error"></p>
+      </div>
+    </div>
     <div id="admin-link-row" style="display:none;">
       <button id="admin-link-btn" type="button"></button>
     </div>
@@ -903,6 +942,20 @@
       supportLinkText: 'Potrebujes pomoct?',
       leaveRoomBtn: 'Opustit misto',
       leaveRoomConfirm: 'Opravdu chces opustit tuto skupinu?',
+      accountSettingsTitle: 'Nastaveni uctu',
+      accountUsernameSaveBtn: 'Ulozit',
+      accountCurrentPasswordLabel: 'Soucasne heslo',
+      accountNewPasswordLabel: 'Nove heslo (min. 8 znaku)',
+      accountPasswordSaveBtn: 'Zmenit heslo',
+      accountDeleteToggleBtn: 'Smazat ucet',
+      accountDeleteBtn: 'Trvale smazat ucet',
+      accountUsernameEmpty: 'Jmeno nemuze byt prazdne.',
+      accountSettingsError: 'Neco se nepovedlo. Zkus to znovu.',
+      accountUsernameSaved: 'Jmeno ulozeno.',
+      accountPasswordSaved: 'Heslo zmeneno.',
+      accountWrongCurrentPassword: 'Spatne heslo.',
+      accountDeleteConfirm: 'Opravdu chces svuj ucet natrvalo smazat? Tato akce se neda vratit zpet.',
+      accountDeleted: 'Ucet byl smazan.',
       passwordTooShort: 'Heslo musi mit alespon 8 znaku.'
     },
     en: {
@@ -977,6 +1030,20 @@
       supportLinkText: 'Need help?',
       leaveRoomBtn: 'Leave room',
       leaveRoomConfirm: 'Are you sure you want to leave this squad?',
+      accountSettingsTitle: 'Account settings',
+      accountUsernameSaveBtn: 'Save',
+      accountCurrentPasswordLabel: 'Current password',
+      accountNewPasswordLabel: 'New password (min. 8 characters)',
+      accountPasswordSaveBtn: 'Change password',
+      accountDeleteToggleBtn: 'Delete account',
+      accountDeleteBtn: 'Permanently delete account',
+      accountUsernameEmpty: 'Name can\'t be empty.',
+      accountSettingsError: 'Something went wrong. Try again.',
+      accountUsernameSaved: 'Name saved.',
+      accountPasswordSaved: 'Password changed.',
+      accountWrongCurrentPassword: 'Wrong password.',
+      accountDeleteConfirm: 'Are you sure you want to permanently delete your account? This can\'t be undone.',
+      accountDeleted: 'Account deleted.',
       passwordTooShort: 'Password must be at least 8 characters.'
     },
     fr: {
@@ -1051,6 +1118,20 @@
       supportLinkText: 'Besoin d\'aide ?',
       leaveRoomBtn: 'Quitter le groupe',
       leaveRoomConfirm: 'Es-tu sur de vouloir quitter ce groupe ?',
+      accountSettingsTitle: 'Parametres du compte',
+      accountUsernameSaveBtn: 'Enregistrer',
+      accountCurrentPasswordLabel: 'Mot de passe actuel',
+      accountNewPasswordLabel: 'Nouveau mot de passe (min. 8 caracteres)',
+      accountPasswordSaveBtn: 'Changer le mot de passe',
+      accountDeleteToggleBtn: 'Supprimer le compte',
+      accountDeleteBtn: 'Supprimer definitivement le compte',
+      accountUsernameEmpty: 'Le nom ne peut pas etre vide.',
+      accountSettingsError: 'Une erreur s\'est produite. Reessaie.',
+      accountUsernameSaved: 'Nom enregistre.',
+      accountPasswordSaved: 'Mot de passe modifie.',
+      accountWrongCurrentPassword: 'Mot de passe incorrect.',
+      accountDeleteConfirm: 'Es-tu sur de vouloir supprimer definitivement ton compte ? Cette action est irreversible.',
+      accountDeleted: 'Compte supprime.',
       passwordTooShort: 'Le mot de passe doit contenir au moins 8 caracteres.'
     },
     es: {
@@ -1125,6 +1206,20 @@
       supportLinkText: '¿Necesitas ayuda?',
       leaveRoomBtn: 'Salir del grupo',
       leaveRoomConfirm: '¿Seguro que quieres salir de este grupo?',
+      accountSettingsTitle: 'Configuracion de la cuenta',
+      accountUsernameSaveBtn: 'Guardar',
+      accountCurrentPasswordLabel: 'Contrasena actual',
+      accountNewPasswordLabel: 'Nueva contrasena (min. 8 caracteres)',
+      accountPasswordSaveBtn: 'Cambiar contrasena',
+      accountDeleteToggleBtn: 'Eliminar cuenta',
+      accountDeleteBtn: 'Eliminar cuenta permanentemente',
+      accountUsernameEmpty: 'El nombre no puede estar vacio.',
+      accountSettingsError: 'Algo salio mal. Intentalo de nuevo.',
+      accountUsernameSaved: 'Nombre guardado.',
+      accountPasswordSaved: 'Contrasena cambiada.',
+      accountWrongCurrentPassword: 'Contrasena incorrecta.',
+      accountDeleteConfirm: '¿Seguro que quieres eliminar tu cuenta permanentemente? Esto no se puede deshacer.',
+      accountDeleted: 'Cuenta eliminada.',
       passwordTooShort: 'La contrasena debe tener al menos 8 caracteres.'
     },
     ar: {
@@ -1199,6 +1294,20 @@
       supportLinkText: 'تحتاج مساعدة؟',
       leaveRoomBtn: 'مغادرة الغرفة',
       leaveRoomConfirm: 'هل انت متاكد من مغادرة هذه المجموعة؟',
+      accountSettingsTitle: 'اعدادات الحساب',
+      accountUsernameSaveBtn: 'حفظ',
+      accountCurrentPasswordLabel: 'كلمة المرور الحالية',
+      accountNewPasswordLabel: 'كلمة مرور جديدة (8 أحرف على الأقل)',
+      accountPasswordSaveBtn: 'تغيير كلمة المرور',
+      accountDeleteToggleBtn: 'حذف الحساب',
+      accountDeleteBtn: 'حذف الحساب نهائيا',
+      accountUsernameEmpty: 'لا يمكن ان يكون الاسم فارغا.',
+      accountSettingsError: 'حدث خطأ ما. حاول مرة اخرى.',
+      accountUsernameSaved: 'تم حفظ الاسم.',
+      accountPasswordSaved: 'تم تغيير كلمة المرور.',
+      accountWrongCurrentPassword: 'كلمة مرور خاطئة.',
+      accountDeleteConfirm: 'هل انت متاكد من حذف حسابك نهائيا؟ لا يمكن التراجع عن هذا.',
+      accountDeleted: 'تم حذف الحساب.',
       passwordTooShort: 'يجب أن تكون كلمة المرور 8 أحرف على الأقل.'
     },
     hi: {
@@ -1273,6 +1382,20 @@
       supportLinkText: 'मदद चाहिए?',
       leaveRoomBtn: 'कमरा छोड़ें',
       leaveRoomConfirm: 'क्या आप वाकई इस समूह को छोड़ना चाहते हैं?',
+      accountSettingsTitle: 'खाता सेटिंग्स',
+      accountUsernameSaveBtn: 'सहेजें',
+      accountCurrentPasswordLabel: 'वर्तमान पासवर्ड',
+      accountNewPasswordLabel: 'नया पासवर्ड (कम से कम 8 अक्षर)',
+      accountPasswordSaveBtn: 'पासवर्ड बदलें',
+      accountDeleteToggleBtn: 'खाता हटाएं',
+      accountDeleteBtn: 'खाता स्थायी रूप से हटाएं',
+      accountUsernameEmpty: 'नाम खाली नहीं हो सकता।',
+      accountSettingsError: 'कुछ गलत हो गया। फिर से कोशिश करें।',
+      accountUsernameSaved: 'नाम सहेजा गया।',
+      accountPasswordSaved: 'पासवर्ड बदल दिया गया।',
+      accountWrongCurrentPassword: 'गलत पासवर्ड।',
+      accountDeleteConfirm: 'क्या आप वाकई अपना खाता स्थायी रूप से हटाना चाहते हैं? यह पूर्ववत नहीं किया जा सकता।',
+      accountDeleted: 'खाता हटा दिया गया।',
       passwordTooShort: 'पासवर्ड कम से कम 8 अक्षर का होना चाहिए।'
     }
   };
@@ -1371,6 +1494,13 @@
     document.getElementById('crop-confirm-btn').textContent = t('cropConfirm');
     document.getElementById('support-link').textContent = t('supportLinkText');
     document.getElementById('leave-room-btn').textContent = t('leaveRoomBtn');
+    document.getElementById('t-account-settings-title').textContent = t('accountSettingsTitle');
+    accountUsernameSaveBtn.textContent = t('accountUsernameSaveBtn');
+    document.getElementById('t-account-current-password-label').textContent = t('accountCurrentPasswordLabel');
+    document.getElementById('t-account-new-password-label').textContent = t('accountNewPasswordLabel');
+    accountPasswordSaveBtn.textContent = t('accountPasswordSaveBtn');
+    accountDeleteToggleBtn.textContent = t('accountDeleteToggleBtn');
+    accountDeleteBtn.textContent = t('accountDeleteBtn');
     if (currentAccount) {
       document.getElementById('account-welcome-text').textContent = t('welcomeBack', {name: currentAccount.username});
     }
@@ -1459,6 +1589,19 @@
   const cropConfirmBtn = document.getElementById('crop-confirm-btn');
   const adminLinkRow = document.getElementById('admin-link-row');
   const adminLinkBtn = document.getElementById('admin-link-btn');
+  const accountSettingsBlock = document.getElementById('account-settings-block');
+  const accountUsernameInput = document.getElementById('account-username-input');
+  const accountUsernameSaveBtn = document.getElementById('account-username-save-btn');
+  const accountUsernameError = document.getElementById('account-username-error');
+  const accountCurrentPasswordInput = document.getElementById('account-current-password-input');
+  const accountNewPasswordInput = document.getElementById('account-new-password-input');
+  const accountPasswordSaveBtn = document.getElementById('account-password-save-btn');
+  const accountPasswordError = document.getElementById('account-password-error');
+  const accountDeleteToggleBtn = document.getElementById('account-delete-toggle-btn');
+  const accountDeleteConfirmRow = document.getElementById('account-delete-confirm-row');
+  const accountDeletePasswordInput = document.getElementById('account-delete-password-input');
+  const accountDeleteBtn = document.getElementById('account-delete-btn');
+  const accountDeleteError = document.getElementById('account-delete-error');
   const settingsToggle = document.getElementById('settings-toggle');
   const settingsPanel = document.getElementById('settings-panel');
   const settingsClose = document.getElementById('settings-close');
@@ -1655,11 +1798,14 @@
       avatarUploadRow.style.display = 'flex';
       avatarUploadPreview.src = myAvatarUrl || '';
       adminLinkRow.style.display = currentAccount.is_admin ? 'block' : 'none';
+      accountSettingsBlock.style.display = 'block';
+      accountUsernameInput.value = currentAccount.username;
     } else {
       accountStatusBar.style.display = 'none';
       openAccountBtn.style.display = 'block';
       avatarUploadRow.style.display = 'none';
       adminLinkRow.style.display = 'none';
+      accountSettingsBlock.style.display = 'none';
     }
   }
 
@@ -1907,6 +2053,70 @@
   });
 
   adminLinkBtn.addEventListener('click', () => { window.location.href = '/admin'; });
+
+  accountUsernameSaveBtn.addEventListener('click', async () => {
+    accountUsernameError.textContent = '';
+    const newName = accountUsernameInput.value.trim();
+    if (!newName){ accountUsernameError.textContent = t('accountUsernameEmpty'); return; }
+    try {
+      const r = await fetch('/auth/change-username', {
+        method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'same-origin',
+        body: JSON.stringify({username: newName})
+      });
+      if (!r.ok){ accountUsernameError.textContent = t('accountSettingsError'); return; }
+      currentAccount.username = newName;
+      accountWelcomeText.textContent = t('welcomeBack', {name: newName});
+      showToast(t('accountUsernameSaved'));
+    } catch (err) { accountUsernameError.textContent = t('accountSettingsError'); }
+  });
+
+  accountPasswordSaveBtn.addEventListener('click', async () => {
+    accountPasswordError.textContent = '';
+    const newPw = accountNewPasswordInput.value;
+    if (newPw.length < 8){ accountPasswordError.textContent = t('passwordTooShort'); return; }
+    try {
+      const r = await fetch('/auth/change-password', {
+        method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'same-origin',
+        body: JSON.stringify({current_password: accountCurrentPasswordInput.value, new_password: newPw})
+      });
+      if (!r.ok){
+        let reason = 'other';
+        try { reason = (await r.json()).error || 'other'; } catch (e) {}
+        accountPasswordError.textContent = reason === 'wrong_current_password' ? t('accountWrongCurrentPassword') : t('accountSettingsError');
+        return;
+      }
+      accountCurrentPasswordInput.value = '';
+      accountNewPasswordInput.value = '';
+      showToast(t('accountPasswordSaved'));
+    } catch (err) { accountPasswordError.textContent = t('accountSettingsError'); }
+  });
+
+  accountDeleteToggleBtn.addEventListener('click', () => {
+    accountDeleteConfirmRow.style.display = accountDeleteConfirmRow.style.display === 'none' ? 'block' : 'none';
+  });
+
+  accountDeleteBtn.addEventListener('click', async () => {
+    accountDeleteError.textContent = '';
+    if (!confirm(t('accountDeleteConfirm'))) return;
+    try {
+      const r = await fetch('/auth/delete-account', {
+        method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'same-origin',
+        body: JSON.stringify({password: accountDeletePasswordInput.value})
+      });
+      if (!r.ok){
+        let reason = 'other';
+        try { reason = (await r.json()).error || 'other'; } catch (e) {}
+        accountDeleteError.textContent = reason === 'wrong_password' ? t('accountWrongCurrentPassword') : t('accountSettingsError');
+        return;
+      }
+      currentAccount = null;
+      myAvatarUrl = null;
+      applyAccountUI();
+      accountDeleteConfirmRow.style.display = 'none';
+      accountDeletePasswordInput.value = '';
+      showToast(t('accountDeleted'));
+    } catch (err) { accountDeleteError.textContent = t('accountSettingsError'); }
+  });
 
   function urlBase64ToUint8Array(base64String){
     const padding = '='.repeat((4 - base64String.length % 4) % 4);

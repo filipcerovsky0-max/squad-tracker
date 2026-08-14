@@ -160,6 +160,27 @@ def update_avatar(user_id: int, avatar_path: str):
         conn.execute("UPDATE users SET avatar_path = ? WHERE id = ?", (avatar_path, user_id))
 
 
+def update_username(user_id: int, new_username: str):
+    with _db() as conn:
+        conn.execute("UPDATE users SET username = ? WHERE id = ?", (new_username[:32], user_id))
+
+
+def update_password(user_id: int, new_password: str):
+    hashed = hash_password(new_password)
+    with _db() as conn:
+        conn.execute(
+            "UPDATE users SET password_salt = ?, password_hash = ? WHERE id = ?",
+            (hashed["salt"], hashed["hash"], user_id),
+        )
+
+
+def delete_user_account(user_id: int):
+    with _db() as conn:
+        conn.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM email_codes WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+
+
 def is_admin_email(email: str) -> bool:
     return bool(email) and email.lower().strip() == ADMIN_EMAIL
 
@@ -472,6 +493,53 @@ async def handle_avatar_upload(request):
     return web.json_response({"ok": True, "avatar": avatar_url})
 
 
+async def handle_change_username(request):
+    user = current_user(request)
+    if not user:
+        return web.json_response({"error": "not_logged_in"}, status=401)
+    data = await request.json()
+    new_username = str(data.get("username", "")).strip()
+    if not (1 <= len(new_username) <= 32):
+        return web.json_response({"error": "invalid_username"}, status=400)
+    update_username(user["id"], new_username)
+    return web.json_response({"ok": True, "username": new_username})
+
+
+async def handle_change_password(request):
+    user = current_user(request)
+    if not user:
+        return web.json_response({"error": "not_logged_in"}, status=401)
+    data = await request.json()
+    new_password = str(data.get("new_password", ""))
+    if len(new_password) < 8:
+        return web.json_response({"error": "password_too_short"}, status=400)
+    # If the account already has a password set (manual signup, or a Google
+    # account that later added one), the current password must be confirmed
+    # before it can be changed. Pure Google-only accounts (no password yet)
+    # can set an initial one without this check - there is nothing to confirm.
+    if user["password_hash"]:
+        current_password = str(data.get("current_password", ""))
+        if not verify_password(current_password, user["password_salt"], user["password_hash"]):
+            return web.json_response({"error": "wrong_current_password"}, status=403)
+    update_password(user["id"], new_password)
+    return web.json_response({"ok": True})
+
+
+async def handle_delete_account(request):
+    user = current_user(request)
+    if not user:
+        return web.json_response({"error": "not_logged_in"}, status=401)
+    data = await request.json()
+    if user["password_hash"]:
+        password = str(data.get("password", ""))
+        if not verify_password(password, user["password_salt"], user["password_hash"]):
+            return web.json_response({"error": "wrong_password"}, status=403)
+    delete_user_account(user["id"])
+    resp = web.json_response({"ok": True})
+    clear_session_cookie(resp)
+    return resp
+
+
 # ---------- admin panel ----------
 
 def require_admin(request):
@@ -542,6 +610,9 @@ def register_routes(app: web.Application, srv):
     app.router.add_get("/auth/google/login", handle_google_login)
     app.router.add_get("/auth/google/callback", handle_google_callback)
     app.router.add_post("/auth/avatar", handle_avatar_upload)
+    app.router.add_post("/auth/change-username", handle_change_username)
+    app.router.add_post("/auth/change-password", handle_change_password)
+    app.router.add_post("/auth/delete-account", handle_delete_account)
     app.router.add_static("/avatars", AVATAR_DIR, show_index=False)
     app.router.add_get("/admin/api/rooms", lambda r: handle_admin_rooms(r, srv))
     app.router.add_post("/admin/api/rooms/{room_id}/close", lambda r: handle_admin_close_room(r, srv))
