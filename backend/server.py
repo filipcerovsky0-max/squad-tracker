@@ -528,9 +528,9 @@ async def websocket_handler(request):
                 await ws.send_str(json.dumps({"type": "pong"}))
 
             elif mtype == "profile_update" and room_id and member_id:
-                # Lets a member push a fresh avatar/color mid-session (e.g. right after
-                # uploading a photo) without waiting for the next rate-limited location
-                # tick - the marker on everyone's map should update immediately.
+                # Lets a member push a fresh avatar/color/username mid-session (e.g. right
+                # after uploading a photo or renaming their account) without waiting for
+                # the next rate-limited location tick - other clients' maps update at once.
                 entry = rooms.get(room_id, {}).get(member_id)
                 if not entry:
                     continue
@@ -540,6 +540,9 @@ async def websocket_handler(request):
                 color = data.get("color")
                 if isinstance(color, str) and color.startswith("#") and len(color) in (4, 7):
                     entry["color"] = color
+                new_username = data.get("username")
+                if isinstance(new_username, str) and 1 <= len(new_username.strip()) <= 24:
+                    entry["username"] = new_username.strip()
                 await broadcast_presence(room_id)
 
             elif mtype == "typing" and room_id and member_id:

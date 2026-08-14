@@ -449,7 +449,7 @@
   /* ---------- settings panel ---------- */
   #settings-panel{
     position:absolute; inset:0; z-index:1200; background:rgba(8,11,10,0.97);
-    display:none; flex-direction:column; padding:24px;
+    display:none; flex-direction:column; padding:24px; overflow-y:auto; -webkit-overflow-scrolling:touch;
   }
   #settings-panel.open{ display:flex; }
   #settings-panel .setting-row{
@@ -457,7 +457,7 @@
     border-bottom:1px solid var(--line); font-family:var(--mono); font-size:13px; color:var(--text);
   }
   #settings-panel .setting-row input[type="checkbox"]{ width:auto; margin:0; accent-color:var(--signal); }
-  #settings-close{ position:absolute; top:14px; right:14px; width:auto; background:transparent; border:1.5px solid var(--danger); color:var(--danger); font-weight:700; padding:6px 12px; font-size:12px; border-radius:3px; }
+  #settings-close{ position:fixed; top:14px; right:14px; width:auto; z-index:1210; background:transparent; border:1.5px solid var(--danger); color:var(--danger); font-weight:700; padding:6px 12px; font-size:12px; border-radius:3px; }
   #stats-block{ margin-top:20px; font-family:var(--mono); font-size:12px; color:var(--text-dim); line-height:1.8; }
   #change-password-row{ display:flex; gap:8px; margin-top:16px; }
   #leave-room-btn{
@@ -2067,6 +2067,15 @@
       currentAccount.username = newName;
       accountWelcomeText.textContent = t('welcomeBack', {name: newName});
       showToast(t('accountUsernameSaved'));
+      // If already connected to a room, push the new name live so the map marker,
+      // chip list and chat sender name update immediately - not just on next join.
+      if (ws && ws.readyState === WebSocket.OPEN && username){
+        username = newName;
+        ws.send(JSON.stringify({type:'profile_update', username: newName}));
+      }
+      if (!ws || ws.readyState !== WebSocket.OPEN){
+        usernameInput.value = newName;
+      }
     } catch (err) { accountUsernameError.textContent = t('accountSettingsError'); }
   });
 
