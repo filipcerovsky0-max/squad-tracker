@@ -798,6 +798,27 @@ async def stale_connection_reaper(app):
                 await broadcast_presence(room_id)
 
 
+LOCATION_HISTORY_RETENTION_DAYS = 30
+
+
+async def history_retention_sweeper(app):
+    """Deletes location-history rows older than LOCATION_HISTORY_RETENTION_DAYS.
+    Without this, GPS coordinates tied to a username would accumulate in the
+    database forever - keeping precise historical location data indefinitely
+    with no purpose isn't compliant with GDPR's storage-limitation principle
+    (Art. 5(1)(e)), so this runs once a day to keep only recent history."""
+    while True:
+        try:
+            cutoff = time.time() - LOCATION_HISTORY_RETENTION_DAYS * 86400
+            conn = sqlite3.connect(DB_PATH)
+            conn.execute("DELETE FROM history WHERE timestamp < ?", (cutoff,))
+            conn.commit()
+            conn.close()
+        except Exception:
+            pass
+        await asyncio.sleep(86400)
+
+
 async def health(request):
     return web.json_response({"status": "ok", "rooms": len(rooms)})
 
@@ -843,10 +864,12 @@ async def custom_404_middleware(request, handler):
 
 async def start_background_tasks(app):
     app["reaper"] = asyncio.create_task(stale_connection_reaper(app))
+    app["history_sweeper"] = asyncio.create_task(history_retention_sweeper(app))
 
 
 async def cleanup_background_tasks(app):
     app["reaper"].cancel()
+    app["history_sweeper"].cancel()
 
 
 async def index(request):
@@ -855,6 +878,11 @@ async def index(request):
 
 async def admin_page(request):
     return web.FileResponse(FRONTEND_DIR / "admin.html")
+
+
+async def legal_page(request):
+    name = request.match_info["page"]
+    return web.FileResponse(FRONTEND_DIR / f"{name}.html")
 
 
 async def static_or_404(request):
@@ -883,6 +911,7 @@ def create_app():
     app.router.add_get("/", index)
     accounts.register_routes(app, sys.modules[__name__])
     app.router.add_get("/admin", admin_page)
+    app.router.add_get("/{page:privacy|terms|eula|cookies|imprint}", legal_page)
     app.router.add_get("/{tail:.*}", static_or_404)
     app.on_startup.append(start_background_tasks)
     app.on_cleanup.append(cleanup_background_tasks)

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cookie Policy - Squad Tracker</title>
+<meta name="robots" content="noindex" />
+<style>
+  :root{
+    --ink:#0a0d0c; --panel-2:#151d1a; --line:#22322b;
+    --signal:#ffb454; --cyan:#4cc9f0; --text:#e7ede9; --text-dim:#8fa199;
+    --mono:'Courier New', monospace;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    background:var(--ink); color:var(--text); font-family:var(--mono); line-height:1.6;
+    max-width:760px; margin:0 auto; padding:32px 20px 80px;
+  }
+  a{ color:var(--cyan); }
+  h1{ color:var(--signal); font-size:24px; margin-bottom:4px; }
+  .updated{ color:var(--text-dim); font-size:12px; margin-bottom:32px; }
+  h2{ color:var(--signal); font-size:16px; margin-top:36px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  p, li{ font-size:14px; color:var(--text); }
+  code{ background:var(--panel-2); padding:1px 5px; border-radius:3px; font-size:12px; color:var(--cyan); }
+  table{ width:100%; border-collapse:collapse; font-size:12.5px; margin:12px 0; }
+  th, td{ text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th{ color:var(--signal); }
+  button{
+    background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-family:var(--mono);
+    font-size:12px; padding:9px 16px; border-radius:4px; cursor:pointer; margin-top:8px;
+  }
+  button:hover{ border-color:var(--cyan); color:var(--cyan); }
+  .back{ display:inline-block; margin-top:40px; color:var(--text-dim); font-size:12px; text-decoration:none; border:1px solid var(--line); padding:8px 16px; border-radius:4px; }
+  .back:hover{ border-color:var(--cyan); color:var(--cyan); }
+</style>
+</head>
+<body>
+  <h1>Cookie Policy</h1>
+  <p class="updated">Squad Tracker &middot; last updated August 2026</p>
+
+  <p>This page lists exactly which cookies and browser local storage entries Squad Tracker uses. For the broader picture of what data we collect and why, see the <a href="/privacy">Privacy Policy</a>.</p>
+
+  <h2>1. Strictly necessary (always on)</h2>
+  <table>
+    <tr><th>Name</th><th>Type</th><th>Purpose</th><th>Duration</th></tr>
+    <tr><td><code>sq_session</code></td><td>Cookie</td><td>Keeps you logged in. HttpOnly + Secure - not readable by page scripts.</td><td>90 days</td></tr>
+    <tr><td><code>sq_cookie_consent</code></td><td>Local storage</td><td>Remembers your choice on this banner so we don't ask again.</td><td>Until cleared</td></tr>
+    <tr><td><code>sq_device_id</code></td><td>Local storage</td><td>Random ID so push notifications can be delivered to your device.</td><td>Until cleared</td></tr>
+  </table>
+  <p>These can't be turned off individually since the app can't function without them - but you're never required to log in or enable push notifications.</p>
+
+  <h2>2. Preferences (local storage only, never sent to us)</h2>
+  <table>
+    <tr><th>Name</th><th>Purpose</th></tr>
+    <tr><td><code>sq_color</code></td><td>Your chosen marker color</td></tr>
+    <tr><td><code>sq_lang</code></td><td>Selected interface language</td></tr>
+    <tr><td><code>sq_vehicle</code></td><td>Selected vehicle icon (car/train/bus)</td></tr>
+    <tr><td><code>sq_satellite</code></td><td>Map style toggle (satellite vs street)</td></tr>
+    <tr><td><code>sq_voice_muted</code></td><td>Whether you've muted incoming voice messages</td></tr>
+    <tr><td><code>sq_sound_chat</code>, <code>sq_sound_voice</code>, <code>sq_sound_proximity</code></td><td>Individual notification-sound toggles</td></tr>
+    <tr><td><code>sq_push_enabled</code></td><td>Whether you've enabled background push notifications</td></tr>
+    <tr><td><code>sq_feature_compass</code>, <code>sq_feature_satellite</code>, <code>sq_feature_polls</code>, <code>sq_feature_waypoints</code></td><td>Which optional features you've turned on or off</td></tr>
+  </table>
+
+  <h2>3. Analytics (only after you accept)</h2>
+  <p>We use <strong>Google Tag Manager</strong> to (optionally, in the future) understand basic usage patterns and improve the app. The Tag Manager script and any tags configured through it are only loaded <strong>after you click "Accept"</strong> on the cookie banner - if you click "Reject" or ignore the banner, this script never loads and no analytics cookies are set. See <a href="https://policies.google.com/technologies/cookies" target="_blank">Google's cookie policy</a> for details on what Google-managed tags may set once loaded.</p>
+
+  <h2>4. Managing your choice</h2>
+  <p>You can change your mind at any time - clearing the button below resets your consent choice, and the banner will reappear next time you load the app.</p>
+  <button id="reset-consent-btn">Reset cookie choice</button>
+
+  <a class="back" href="/">&larr; Back to Squad Tracker</a>
+
+  <script>
+    document.getElementById('reset-consent-btn').addEventListener('click', function(){
+      localStorage.removeItem('sq_cookie_consent');
+      this.textContent = 'Done - reload the app to see the banner again';
+      this.disabled = true;
+    });
+  </script>
+</body>
+</html>

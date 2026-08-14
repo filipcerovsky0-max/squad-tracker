@@ -543,6 +543,34 @@
   }
   #support-link:hover{ opacity:0.9; color:var(--cyan); }
 
+  #legal-footer{
+    position:absolute; bottom:14px; left:16px; z-index:5;
+    font-family:var(--mono); font-size:10px; color:var(--text-dim); opacity:0.5;
+    display:flex; gap:6px; align-items:center;
+  }
+  #legal-footer a{ color:var(--text-dim); text-decoration:none; }
+  #legal-footer a:hover{ color:var(--cyan); }
+  #legal-footer span{ opacity:0.5; }
+
+  #cookie-consent-banner{
+    position:fixed; left:0; right:0; bottom:0; z-index:3000;
+    background:rgba(10,13,12,0.98); border-top:1px solid var(--line);
+    padding:16px; display:none; flex-direction:column; gap:12px;
+    font-family:var(--mono); box-shadow:0 -4px 24px rgba(0,0,0,0.5);
+  }
+  #cookie-consent-banner.show{ display:flex; }
+  #cookie-consent-banner p{ margin:0; font-size:12px; color:var(--text); line-height:1.5; }
+  #cookie-consent-btns{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  #cookie-learn-more{ color:var(--cyan); font-size:11px; text-decoration:underline; margin-right:auto; }
+  #cookie-reject-btn{
+    width:auto; margin:0; background:transparent; border:1px solid var(--line); color:var(--text-dim);
+    font-size:12px; padding:9px 16px;
+  }
+  #cookie-accept-btn{
+    width:auto; margin:0; background:var(--signal); color:#0a0d0c; border:none; font-weight:700;
+    font-size:12px; padding:9px 18px;
+  }
+
   /* ---------- avatar crop panel ---------- */
   #avatar-crop-panel{
     position:absolute; inset:0; z-index:1400; background:rgba(6,8,7,0.98);
@@ -577,6 +605,10 @@
 </style>
 </head>
 <body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-TZH7MWPB"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
 <div id="app">
 
   <!-- JOIN SCREEN -->
@@ -591,6 +623,13 @@
       <button type="button" data-lang="hi">HI</button>
     </div>
     <a id="support-link" href="mailto:squad.tracker.support@gmail.com?subject=Squad%20Tracker%20-%20pomoc"></a>
+    <div id="legal-footer">
+      <a href="/privacy">Privacy</a><span>&middot;</span>
+      <a href="/terms">Terms</a><span>&middot;</span>
+      <a href="/eula">EULA</a><span>&middot;</span>
+      <a href="/cookies">Cookies</a><span>&middot;</span>
+      <a href="/imprint">Imprint</a>
+    </div>
     <div class="join-card">
       <p class="eyebrow">// squad tracker</p>
       <h1 id="t-title">Připojit se k jednotce</h1>
@@ -862,12 +901,40 @@
     </button>
   </div>
 
+  <!-- COOKIE CONSENT BANNER -->
+  <div id="cookie-consent-banner">
+    <p id="t-cookie-consent-text"></p>
+    <div id="cookie-consent-btns">
+      <a href="/cookies" id="cookie-learn-more"></a>
+      <button type="button" id="cookie-reject-btn"></button>
+      <button type="button" id="cookie-accept-btn"></button>
+    </div>
+  </div>
+
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (function(){
   "use strict";
+
+  // ---------- Cookie consent + gated Google Tag Manager ----------
+  // GTM must NOT load before consent - it can set analytics cookies, which
+  // under GDPR/ePrivacy require prior opt-in, not just a banner shown alongside it.
+  function loadGTM(){
+    if (window._gtmLoaded) return;
+    window._gtmLoaded = true;
+    (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-TZH7MWPB');
+  }
+  const COOKIE_CONSENT_KEY = 'sq_cookie_consent';
+  const cookieConsentState = localStorage.getItem(COOKIE_CONSENT_KEY);
+  if (cookieConsentState === 'accepted'){
+    loadGTM();
+  }
 
   const I18N = {
     cs: {
@@ -942,6 +1009,10 @@
       supportLinkText: 'Potrebujes pomoct?',
       leaveRoomBtn: 'Opustit misto',
       leaveRoomConfirm: 'Opravdu chces opustit tuto skupinu?',
+      cookieConsentText: 'Pouzivame nezbytne cookies pro prihlaseni a volitelne analyticke nastroje (Google Tag Manager), ktere se nactou az po tvem souhlasu.',
+      cookieLearnMore: 'Zjistit vice',
+      cookieRejectBtn: 'Odmitnout',
+      cookieAcceptBtn: 'Prijmout',
       accountSettingsTitle: 'Nastaveni uctu',
       accountUsernameSaveBtn: 'Ulozit',
       accountCurrentPasswordLabel: 'Soucasne heslo',
@@ -1030,6 +1101,10 @@
       supportLinkText: 'Need help?',
       leaveRoomBtn: 'Leave room',
       leaveRoomConfirm: 'Are you sure you want to leave this squad?',
+      cookieConsentText: 'We use essential cookies for login, and optional analytics (Google Tag Manager) that only load after you accept.',
+      cookieLearnMore: 'Learn more',
+      cookieRejectBtn: 'Reject',
+      cookieAcceptBtn: 'Accept',
       accountSettingsTitle: 'Account settings',
       accountUsernameSaveBtn: 'Save',
       accountCurrentPasswordLabel: 'Current password',
@@ -1118,6 +1193,10 @@
       supportLinkText: 'Besoin d\'aide ?',
       leaveRoomBtn: 'Quitter le groupe',
       leaveRoomConfirm: 'Es-tu sur de vouloir quitter ce groupe ?',
+      cookieConsentText: 'Nous utilisons des cookies essentiels pour la connexion, et des analyses optionnelles (Google Tag Manager) qui ne se chargent qu\'apres ton accord.',
+      cookieLearnMore: 'En savoir plus',
+      cookieRejectBtn: 'Refuser',
+      cookieAcceptBtn: 'Accepter',
       accountSettingsTitle: 'Parametres du compte',
       accountUsernameSaveBtn: 'Enregistrer',
       accountCurrentPasswordLabel: 'Mot de passe actuel',
@@ -1206,6 +1285,10 @@
       supportLinkText: '¿Necesitas ayuda?',
       leaveRoomBtn: 'Salir del grupo',
       leaveRoomConfirm: '¿Seguro que quieres salir de este grupo?',
+      cookieConsentText: 'Usamos cookies esenciales para el inicio de sesion, y analisis opcionales (Google Tag Manager) que solo se cargan tras tu aceptacion.',
+      cookieLearnMore: 'Saber mas',
+      cookieRejectBtn: 'Rechazar',
+      cookieAcceptBtn: 'Aceptar',
       accountSettingsTitle: 'Configuracion de la cuenta',
       accountUsernameSaveBtn: 'Guardar',
       accountCurrentPasswordLabel: 'Contrasena actual',
@@ -1294,6 +1377,10 @@
       supportLinkText: 'تحتاج مساعدة؟',
       leaveRoomBtn: 'مغادرة الغرفة',
       leaveRoomConfirm: 'هل انت متاكد من مغادرة هذه المجموعة؟',
+      cookieConsentText: 'نستخدم ملفات تعريف ارتباط اساسية لتسجيل الدخول، وتحليلات اختيارية (Google Tag Manager) يتم تحميلها فقط بعد موافقتك.',
+      cookieLearnMore: 'معرفة المزيد',
+      cookieRejectBtn: 'رفض',
+      cookieAcceptBtn: 'قبول',
       accountSettingsTitle: 'اعدادات الحساب',
       accountUsernameSaveBtn: 'حفظ',
       accountCurrentPasswordLabel: 'كلمة المرور الحالية',
@@ -1382,6 +1469,10 @@
       supportLinkText: 'मदद चाहिए?',
       leaveRoomBtn: 'कमरा छोड़ें',
       leaveRoomConfirm: 'क्या आप वाकई इस समूह को छोड़ना चाहते हैं?',
+      cookieConsentText: 'हम लॉगिन के लिए आवश्यक कुकीज़ का उपयोग करते हैं, और वैकल्पिक एनालिटिक्स (Google Tag Manager) जो आपकी सहमति के बाद ही लोड होते हैं।',
+      cookieLearnMore: 'और जानें',
+      cookieRejectBtn: 'अस्वीकार करें',
+      cookieAcceptBtn: 'स्वीकार करें',
       accountSettingsTitle: 'खाता सेटिंग्स',
       accountUsernameSaveBtn: 'सहेजें',
       accountCurrentPasswordLabel: 'वर्तमान पासवर्ड',
@@ -1494,6 +1585,10 @@
     document.getElementById('crop-confirm-btn').textContent = t('cropConfirm');
     document.getElementById('support-link').textContent = t('supportLinkText');
     document.getElementById('leave-room-btn').textContent = t('leaveRoomBtn');
+    document.getElementById('t-cookie-consent-text').textContent = t('cookieConsentText');
+    document.getElementById('cookie-learn-more').textContent = t('cookieLearnMore');
+    document.getElementById('cookie-reject-btn').textContent = t('cookieRejectBtn');
+    document.getElementById('cookie-accept-btn').textContent = t('cookieAcceptBtn');
     document.getElementById('t-account-settings-title').textContent = t('accountSettingsTitle');
     accountUsernameSaveBtn.textContent = t('accountUsernameSaveBtn');
     document.getElementById('t-account-current-password-label').textContent = t('accountCurrentPasswordLabel');
@@ -1708,6 +1803,23 @@
 
   document.addEventListener('visibilitychange', () => {
     appHidden = document.visibilityState === 'hidden';
+  });
+
+  // ---------- Cookie consent banner ----------
+  const cookieBanner = document.getElementById('cookie-consent-banner');
+  const cookieAcceptBtn = document.getElementById('cookie-accept-btn');
+  const cookieRejectBtn = document.getElementById('cookie-reject-btn');
+  if (!cookieConsentState){
+    cookieBanner.classList.add('show');
+  }
+  cookieAcceptBtn.addEventListener('click', () => {
+    localStorage.setItem(COOKIE_CONSENT_KEY, 'accepted');
+    cookieBanner.classList.remove('show');
+    loadGTM();
+  });
+  cookieRejectBtn.addEventListener('click', () => {
+    localStorage.setItem(COOKIE_CONSENT_KEY, 'rejected');
+    cookieBanner.classList.remove('show');
   });
 
   soundChatToggle.checked = soundChatOn;

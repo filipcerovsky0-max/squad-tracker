@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Privacy Policy - Squad Tracker</title>
+<meta name="robots" content="noindex" />
+<style>
+  :root{
+    --ink:#0a0d0c; --panel:#101614; --panel-2:#151d1a; --line:#22322b;
+    --signal:#ffb454; --cyan:#4cc9f0; --text:#e7ede9; --text-dim:#8fa199; --danger:#ff5d5d;
+    --mono:'Courier New', monospace;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    background:var(--ink); color:var(--text); font-family:var(--mono); line-height:1.6;
+    max-width:760px; margin:0 auto; padding:32px 20px 80px;
+  }
+  a{ color:var(--cyan); }
+  h1{ color:var(--signal); font-size:24px; margin-bottom:4px; }
+  .updated{ color:var(--text-dim); font-size:12px; margin-bottom:32px; }
+  h2{ color:var(--signal); font-size:16px; margin-top:36px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  p, li{ font-size:14px; color:var(--text); }
+  ul{ padding-left:20px; }
+  li{ margin-bottom:6px; }
+  code{ background:var(--panel-2); padding:1px 5px; border-radius:3px; font-size:12px; color:var(--cyan); }
+  .back{ display:inline-block; margin-top:40px; color:var(--text-dim); font-size:12px; text-decoration:none; border:1px solid var(--line); padding:8px 16px; border-radius:4px; }
+  .back:hover{ border-color:var(--cyan); color:var(--cyan); }
+  table{ width:100%; border-collapse:collapse; font-size:13px; margin:12px 0; }
+  th, td{ text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); }
+  th{ color:var(--signal); }
+</style>
+</head>
+<body>
+  <h1>Privacy Policy</h1>
+  <p class="updated">Squad Tracker &middot; last updated August 2026</p>
+
+  <p>Squad Tracker ("we", "the app") is a real-time group location-sharing tool. This page explains what data we collect, why, how long we keep it, and what rights you have over it. We built this to be honest and specific, not generic boilerplate - every item below reflects what the app actually does.</p>
+
+  <h2>1. Who is responsible for your data</h2>
+  <p>Squad Tracker is operated as a small independent project. For any privacy question, request, or complaint, contact us at <a href="mailto:squad.tracker.support@gmail.com">squad.tracker.support@gmail.com</a>.</p>
+
+  <h2>2. What we collect</h2>
+  <table>
+    <tr><th>Data</th><th>When</th><th>Why</th></tr>
+    <tr><td>GPS coordinates</td><td>While you're actively sharing location in a room</td><td>Core function of the app - showing your position to your group</td></tr>
+    <tr><td>Email address, hashed password</td><td>If you create an account</td><td>Login, account recovery, verification</td></tr>
+    <tr><td>Username, avatar photo</td><td>If you set one</td><td>Displayed to others in your room</td></tr>
+    <tr><td>Google account email/name/photo</td><td>If you use "Continue with Google"</td><td>Account creation without a password</td></tr>
+    <tr><td>Chat messages, images, voice clips</td><td>When sent in a room</td><td>Group communication</td></tr>
+    <tr><td>Battery level, device identifier</td><td>While using the app</td><td>Low-battery warnings to your group; push notification delivery</td></tr>
+    <tr><td>IP address</td><td>Every request (standard server logs)</td><td>Security, abuse prevention</td></tr>
+  </table>
+
+  <h2>3. Cookies &amp; local storage</h2>
+  <p>We use one authentication cookie (<code>sq_session</code>) if you're logged in - it's <code>HttpOnly</code> and <code>Secure</code>, meaning it can't be read by page scripts and only travels over HTTPS. We do not use any advertising or cross-site tracking cookies.</p>
+  <p>We also store small preference values directly in your browser's local storage (never sent to any third party), for example: your chosen map color, language, sound settings, and which optional features (compass, satellite view, polls, route stops) you've turned on or off. You can clear these any time via your browser's site settings.</p>
+
+  <h2>4. How long we keep data</h2>
+  <ul>
+    <li><strong>Location history</strong> is automatically deleted after 30 days.</li>
+    <li><strong>Chat messages, images, and voice clips</strong> are kept only in server memory for the active room and are not written to permanent storage - they're gone once the room becomes inactive or the server restarts.</li>
+    <li><strong>Account data</strong> (email, username, avatar) is kept until you delete your account, which happens instantly and permanently via Settings &rarr; Account &rarr; Delete account.</li>
+  </ul>
+
+  <h2>5. Who we share data with</h2>
+  <p>We don't sell or rent your data. A few external services help run the app, and each has its own privacy policy:</p>
+  <ul>
+    <li><strong>Google</strong> - if you sign in with Google (<a href="https://policies.google.com/privacy" target="_blank">Google Privacy Policy</a>)</li>
+    <li><strong>Resend</strong> - sends verification emails on our behalf (<a href="https://resend.com/legal/privacy-policy" target="_blank">Resend Privacy Policy</a>)</li>
+    <li><strong>Railway</strong> - hosts our servers and database (<a href="https://railway.com/legal/privacy" target="_blank">Railway Privacy Policy</a>)</li>
+  </ul>
+  <p>Other members of a room you join can see your live location, username, avatar, and messages while you're in that room - that visibility is the core purpose of the app and is why we ask for explicit consent before location sharing begins.</p>
+
+  <h2>6. Your rights</h2>
+  <p>Depending on where you live (including full rights under the EU/UK GDPR), you can:</p>
+  <ul>
+    <li>Access the data we hold about you</li>
+    <li>Correct inaccurate data (username, avatar - editable directly in Settings)</li>
+    <li>Delete your account and all associated data at any time (Settings &rarr; Account &rarr; Delete account)</li>
+    <li>Object to or restrict certain processing</li>
+    <li>Request a copy of your data in a portable format</li>
+    <li>Lodge a complaint with your local data protection authority</li>
+  </ul>
+  <p>For anything not covered by the self-service tools in Settings, email <a href="mailto:squad.tracker.support@gmail.com">squad.tracker.support@gmail.com</a> and we'll respond within a reasonable time.</p>
+
+  <h2>7. Children</h2>
+  <p>Squad Tracker is not directed at children under 16. If you are under the age required for independent consent to online services in your country, please only use this app with a parent or guardian's involvement.</p>
+
+  <h2>8. Security</h2>
+  <p>Passwords are hashed with PBKDF2-SHA256 (100,000 iterations) and a unique salt per account - we never store or can see your plain-text password. All traffic is encrypted over HTTPS. Session cookies use the <code>Secure</code> and <code>HttpOnly</code> flags.</p>
+
+  <h2>9. Changes to this policy</h2>
+  <p>If this policy changes meaningfully, we'll update the date at the top of this page.</p>
+
+  <a class="back" href="/">&larr; Back to Squad Tracker</a>
+</body>
+</html>
