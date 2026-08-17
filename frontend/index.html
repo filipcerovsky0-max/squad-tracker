@@ -14,6 +14,18 @@
 <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="Squad Tracker - Real-time GPS sledovani skupiny" />
 <meta name="twitter:description" content="Sdilej polohu, chatuj a zustan v kontaktu se svou skupinou v realnem case." />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Squad Tracker",
+  "url": "https://squad-tracker.site/",
+  "description": "Real-time GPS group tracking, chat and voice messaging for coordinating with your squad on trips and outings.",
+  "applicationCategory": "TravelApplication",
+  "operatingSystem": "Any (web-based)",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+}
+</script>
 <link rel="manifest" href="/manifest.json" />
 <link rel="icon" href="/icons/icon-192.png" />
 <link rel="apple-touch-icon" href="/icons/icon-192.png" />
@@ -45,6 +57,23 @@
     display:flex; flex-direction:column;
   }
   #app{position:fixed; inset:0; display:flex; flex-direction:column;}
+
+  #splash-screen{
+    position:fixed; inset:0; z-index:9999; background:var(--ink);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px;
+    transition:opacity 0.4s ease, visibility 0.4s ease;
+  }
+  #splash-screen.hidden{ opacity:0; visibility:hidden; pointer-events:none; }
+  .splash-blip{
+    width:16px; height:16px; border-radius:50%; background:var(--signal);
+    box-shadow:0 0 0 0 rgba(255,180,84,0.5); animation:splash-pulse 1.4s infinite;
+  }
+  @keyframes splash-pulse{
+    0%{ box-shadow:0 0 0 0 rgba(255,180,84,0.5); }
+    70%{ box-shadow:0 0 0 26px rgba(255,180,84,0); }
+    100%{ box-shadow:0 0 0 0 rgba(255,180,84,0); }
+  }
+  .splash-text{ font-family:var(--mono); font-size:12px; letter-spacing:.25em; color:var(--text-dim); }
 
   /* ---------- JOIN SCREEN ---------- */
   #join-screen{
@@ -609,6 +638,11 @@
 <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-TZH7MWPB"
 height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- End Google Tag Manager (noscript) -->
+<div id="splash-screen">
+  <div class="splash-blip"></div>
+  <p class="splash-text">SQUAD TRACKER</p>
+</div>
+<script>window._splashStart = Date.now();</script>
 <div id="app">
 
   <!-- JOIN SCREEN -->
@@ -946,6 +980,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       notConnected: 'Nejsi připojen - zpráva se neodeslala',
       micUnavailable: 'Mikrofon není v tomto prohlížeči dostupný', micError: 'Mikrofon: {err}',
       geoUnavailable: 'Geolokace není v tomto prohlížeči dostupná', geoError: 'Poloha: {err}',
+      lowGpsAccuracy: 'Nizka presnost GPS ({m} m) - stale te sdilime, ale tva pozice muze byt nepresna.',
       proximity: '! {name} je {dist} m od tebe', speaking: '[AUDIO] {name} mluví',
       passwordLabel: 'Heslo (jen pro soukromou mistnost)', passwordPlaceholder: 'volitelne',
       consentLabel: 'Souhlasim se sdilenim polohy, chatu a hlasu s ostatnimi v teto mistnosti.',
@@ -1038,6 +1073,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       notConnected: 'Not connected - message was not sent',
       micUnavailable: 'Microphone is not available in this browser', micError: 'Microphone: {err}',
       geoUnavailable: 'Geolocation is not available in this browser', geoError: 'Location: {err}',
+      lowGpsAccuracy: 'Low GPS accuracy ({m} m) - you\'re still being shared, but your position may be imprecise.',
       proximity: '! {name} is {dist} m from you', speaking: '[AUDIO] {name} is talking',
       passwordLabel: 'Password (for private rooms only)', passwordPlaceholder: 'optional',
       consentLabel: 'I agree to share my location, chat and voice with others in this room.',
@@ -1130,6 +1166,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       notConnected: 'Non connecte - message non envoye',
       micUnavailable: 'Microphone indisponible dans ce navigateur', micError: 'Microphone : {err}',
       geoUnavailable: 'Geolocalisation indisponible dans ce navigateur', geoError: 'Position : {err}',
+      lowGpsAccuracy: 'Faible precision GPS ({m} m) - tu es toujours partage, mais ta position peut etre imprecise.',
       proximity: '! {name} est a {dist} m de toi', speaking: '[AUDIO] {name} parle',
       passwordLabel: 'Mot de passe (salles privees uniquement)', passwordPlaceholder: 'optionnel',
       consentLabel: "J'accepte de partager ma position, mon chat et ma voix avec les autres dans cette salle.",
@@ -1222,6 +1259,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       notConnected: 'No conectado - mensaje no enviado',
       micUnavailable: 'Microfono no disponible en este navegador', micError: 'Microfono: {err}',
       geoUnavailable: 'Geolocalizacion no disponible en este navegador', geoError: 'Ubicacion: {err}',
+      lowGpsAccuracy: 'Baja precision GPS ({m} m) - sigues siendo compartido, pero tu posicion puede ser imprecisa.',
       proximity: '! {name} esta a {dist} m de ti', speaking: '[AUDIO] {name} esta hablando',
       passwordLabel: 'Contrasena (solo salas privadas)', passwordPlaceholder: 'opcional',
       consentLabel: 'Acepto compartir mi ubicacion, chat y voz con otros en esta sala.',
@@ -1314,6 +1352,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       notConnected: 'غير متصل - لم يتم إرسال الرسالة',
       micUnavailable: 'الميكروفون غير متاح في هذا المتصفح', micError: 'الميكروفون: {err}',
       geoUnavailable: 'تحديد الموقع غير متاح في هذا المتصفح', geoError: 'الموقع: {err}',
+      lowGpsAccuracy: 'دقة GPS منخفضة ({m} م) - لا يزال يتم مشاركتك، لكن موقعك قد يكون غير دقيق.',
       proximity: '! {name} على بعد {dist} م منك', speaking: '[صوت] {name} يتحدث',
       passwordLabel: 'كلمة المرور (للغرف الخاصة فقط)', passwordPlaceholder: 'اختياري',
       consentLabel: 'أوافق على مشاركة موقعي والمحادثة والصوت مع الآخرين في هذه الغرفة.',
@@ -1406,6 +1445,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       notConnected: 'कनेक्ट नहीं है - संदेश नहीं भेजा गया',
       micUnavailable: 'इस ब्राउज़र में माइक्रोफ़ोन उपलब्ध नहीं है', micError: 'माइक्रोफ़ोन: {err}',
       geoUnavailable: 'इस ब्राउज़र में लोकेशन उपलब्ध नहीं है', geoError: 'लोकेशन: {err}',
+      lowGpsAccuracy: 'कम GPS सटीकता ({m} मी) - आप अभी भी साझा किए जा रहे हैं, लेकिन आपकी स्थिति गलत हो सकती है।',
       proximity: '! {name} आपसे {dist} मी दूर है', speaking: '[ऑडियो] {name} बोल रहा है',
       passwordLabel: 'पासवर्ड (केवल निजी रूम के लिए)', passwordPlaceholder: 'वैकल्पिक',
       consentLabel: 'मैं इस रूम में दूसरों के साथ अपनी लोकेशन, चैट और आवाज़ साझा करने के लिए सहमत हूं।',
@@ -1614,6 +1654,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
   const joinScreen = document.getElementById('join-screen');
   const mapScreen = document.getElementById('map-screen');
+  const splashScreen = document.getElementById('splash-screen');
   const usernameInput = document.getElementById('username');
   const roomInput = document.getElementById('room');
   const roomPasswordInput = document.getElementById('room-password');
@@ -2946,7 +2987,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   }
 
   let accuracyCircle = null;
-  const GPS_ACCURACY_REJECT_M = 300; // fixes worse than this are almost certainly IP/cell fallback, not real GPS - skip broadcasting them
+  const GPS_LOW_ACCURACY_WARN_M = 150; // above this we still share the location (better visible-but-fuzzy than invisible), just warn the user
+  let lowAccuracyWarned = false;
 
   function startGeolocation(){
     if (watchId !== null) return;
@@ -2975,10 +3017,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             }).addTo(map);
           }
         }
-        // Skip broadcasting fixes so imprecise they're almost certainly not real GPS
-        // (e.g. IP-based fallback indoors) - keeps everyone else's view accurate rather
-        // than showing a marker that jumped hundreds of meters off.
-        if (accuracy != null && accuracy > GPS_ACCURACY_REJECT_M) return;
+        // We always share the location, even when accuracy is poor - a fuzzy
+        // marker that's visible is far more useful for group coordination than
+        // silently disappearing from everyone's map with zero explanation.
+        // We just let the person know once per session so they understand why
+        // their marker (and the accuracy circle) might be imprecise right now.
+        if (accuracy != null && accuracy > GPS_LOW_ACCURACY_WARN_M && !lowAccuracyWarned){
+          lowAccuracyWarned = true;
+          showToast(t('lowGpsAccuracy', {m: Math.round(accuracy)}));
+        }
         if (ws && ws.readyState === WebSocket.OPEN){
           const payload = {type:'location', lat:latitude, lng:longitude};
           if (batteryLevel != null) payload.battery = batteryLevel;
@@ -3242,6 +3289,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     joinBtn.disabled = true;
     connect(); // screen switches only after the server confirms with "joined"
   });
+
+  // App is fully wired up - hide the splash screen. A small minimum display
+  // time avoids an unpleasant flash-of-splash on fast connections while still
+  // covering the (potentially slower) Leaflet script load on slow ones.
+  const SPLASH_MIN_MS = 350;
+  const splashElapsed = Date.now() - (window._splashStart || Date.now());
+  setTimeout(() => {
+    splashScreen.classList.add('hidden');
+  }, Math.max(0, SPLASH_MIN_MS - splashElapsed));
 })();
 </script>
 </body>
