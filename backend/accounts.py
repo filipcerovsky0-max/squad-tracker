@@ -123,6 +123,15 @@ def get_user_by_id(user_id: int):
         return dict(row) if row else None
 
 
+def list_all_users():
+    with _db() as conn:
+        rows = conn.execute(
+            "SELECT id, email, username, avatar_path, email_verified, google_sub, created_ts, "
+            "(password_hash IS NOT NULL) AS has_password FROM users ORDER BY created_ts DESC"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
 def get_user_by_google_sub(sub: str):
     with _db() as conn:
         row = conn.execute("SELECT * FROM users WHERE google_sub = ?", (sub,)).fetchone()
@@ -600,6 +609,35 @@ async def handle_admin_kick_user(request, srv):
     return web.json_response({"ok": True, "kicked": len(targets)})
 
 
+async def handle_admin_list_users(request):
+    admin = require_admin(request)
+    if not admin:
+        return web.json_response({"error": "forbidden"}, status=403)
+    users = list_all_users()
+    for u in users:
+        u["is_admin"] = is_admin_email(u["email"])
+        u["has_password"] = bool(u["has_password"])
+        u["login_method"] = "google" if u.get("google_sub") else "email"
+        u.pop("google_sub", None)
+    return web.json_response({"users": users})
+
+
+async def handle_admin_delete_user(request):
+    admin = require_admin(request)
+    if not admin:
+        return web.json_response({"error": "forbidden"}, status=403)
+    target_id = int(request.match_info["user_id"])
+    target = get_user_by_id(target_id)
+    if not target:
+        return web.json_response({"error": "not_found"}, status=404)
+    if is_admin_email(target["email"]):
+        # the hardcoded admin account can't be deleted through this endpoint -
+        # avoids ever accidentally locking every admin out of their own panel
+        return web.json_response({"error": "cannot_delete_admin"}, status=403)
+    delete_user_account(target_id)
+    return web.json_response({"ok": True})
+
+
 def register_routes(app: web.Application, srv):
     app.router.add_post("/auth/register", handle_register)
     app.router.add_post("/auth/verify", handle_verify_email)
@@ -617,3 +655,5 @@ def register_routes(app: web.Application, srv):
     app.router.add_get("/admin/api/rooms", lambda r: handle_admin_rooms(r, srv))
     app.router.add_post("/admin/api/rooms/{room_id}/close", lambda r: handle_admin_close_room(r, srv))
     app.router.add_post("/admin/api/rooms/{room_id}/kick/{username}", lambda r: handle_admin_kick_user(r, srv))
+    app.router.add_get("/admin/api/users", handle_admin_list_users)
+    app.router.add_post("/admin/api/users/{user_id}/delete", handle_admin_delete_user)

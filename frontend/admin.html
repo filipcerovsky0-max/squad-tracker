@@ -32,6 +32,16 @@
   }
   .stat-box .num{ font-size:24px; color:var(--signal); font-weight:700; }
   .stat-box .lbl{ font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.05em; }
+
+  #tabs{ display:flex; gap:8px; margin-bottom:18px; }
+  .tab-btn{
+    background:transparent; border:1px solid var(--line); color:var(--text-dim); font-family:var(--mono);
+    font-size:12px; padding:9px 18px; border-radius:4px; cursor:pointer; letter-spacing:.04em; text-transform:uppercase;
+  }
+  .tab-btn.active{ border-color:var(--signal); color:var(--signal); }
+  .tab-panel{ display:none; }
+  .tab-panel.active{ display:block; }
+
   table{ width:100%; border-collapse:collapse; font-size:13px; }
   th{ text-align:left; color:var(--text-dim); font-size:11px; text-transform:uppercase; padding:8px; border-bottom:1px solid var(--line); }
   td{ padding:10px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
@@ -45,12 +55,21 @@
   .badge{ font-size:10px; padding:2px 6px; border-radius:3px; margin-right:4px; }
   .badge.pw{ background:rgba(255,180,84,0.15); color:var(--signal); }
   .badge.poll{ background:rgba(76,201,240,0.15); color:var(--cyan); }
-  button.close-btn{
-    background:var(--danger); color:#0a0d0c; border:1px solid var(--danger); border-radius:3px;
-    padding:6px 12px; font-family:var(--mono); font-size:11px; font-weight:700; cursor:pointer;
+  .badge.admin{ background:rgba(76,201,240,0.15); color:var(--cyan); }
+  .badge.unverified{ background:rgba(255,93,93,0.15); color:var(--danger); }
+  .row-actions{ display:flex; gap:6px; flex-wrap:wrap; }
+  button.close-btn, button.covert-btn, button.delete-user-btn{
+    border-radius:3px; padding:6px 12px; font-family:var(--mono); font-size:11px; font-weight:700; cursor:pointer; border:1px solid;
   }
+  button.close-btn{ background:var(--danger); color:#0a0d0c; border-color:var(--danger); }
   button.close-btn:hover{ background:#ff2e2e; border-color:#ff2e2e; }
-  #empty-state{ color:var(--text-dim); text-align:center; padding:40px; display:none; }
+  button.covert-btn{ background:transparent; color:var(--cyan); border-color:var(--cyan); }
+  button.covert-btn:hover{ background:var(--cyan); color:#0a0d0c; }
+  button.delete-user-btn{ background:transparent; color:var(--danger); border-color:var(--danger); }
+  button.delete-user-btn:hover{ background:var(--danger); color:#0a0d0c; }
+  button.delete-user-btn:disabled{ opacity:0.3; cursor:not-allowed; }
+  .avatar-thumb{ width:26px; height:26px; border-radius:50%; object-fit:cover; vertical-align:middle; margin-right:6px; background:var(--panel-2); }
+  #empty-state, #empty-users-state{ color:var(--text-dim); text-align:center; padding:40px; display:none; }
   #refresh-note{ color:var(--text-dim); font-size:11px; margin-top:16px; }
 </style>
 </head>
@@ -71,16 +90,34 @@
       <div class="stat-box"><div class="num" id="stat-rooms">-</div><div class="lbl">Active rooms</div></div>
       <div class="stat-box"><div class="num" id="stat-members">-</div><div class="lbl">People online</div></div>
       <div class="stat-box"><div class="num" id="stat-messages">-</div><div class="lbl">Messages (session)</div></div>
+      <div class="stat-box"><div class="num" id="stat-users">-</div><div class="lbl">Registered accounts</div></div>
     </div>
 
-    <table>
-      <thead>
-        <tr><th>Room</th><th>Members</th><th>Flags</th><th></th></tr>
-      </thead>
-      <tbody id="rooms-tbody"></tbody>
-    </table>
-    <div id="empty-state">No active rooms right now.</div>
-    <p id="refresh-note">Auto-refreshes every 10s.</p>
+    <div id="tabs">
+      <button class="tab-btn active" data-tab="rooms">Rooms</button>
+      <button class="tab-btn" data-tab="users">Accounts</button>
+    </div>
+
+    <div id="tab-rooms" class="tab-panel active">
+      <table>
+        <thead>
+          <tr><th>Room</th><th>Members</th><th>Flags</th><th></th></tr>
+        </thead>
+        <tbody id="rooms-tbody"></tbody>
+      </table>
+      <div id="empty-state">No active rooms right now.</div>
+      <p id="refresh-note">Auto-refreshes every 10s. "Join covertly" opens the room in a new tab - you'll see everyone, but never appear in anyone's member list.</p>
+    </div>
+
+    <div id="tab-users" class="tab-panel">
+      <table>
+        <thead>
+          <tr><th>Account</th><th>Email</th><th>Login method</th><th>Created</th><th></th></tr>
+        </thead>
+        <tbody id="users-tbody"></tbody>
+      </table>
+      <div id="empty-users-state">No registered accounts yet.</div>
+    </div>
   </div>
 
 <script>
@@ -91,6 +128,15 @@
 
   document.getElementById('google-login-btn').addEventListener('click', () => {
     window.location.href = '/auth/google/login';
+  });
+
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
   });
 
   function escapeHtml(str){
@@ -129,7 +175,10 @@
         '<td class="room-id">' + escapeHtml(room.room_id) + '</td>' +
         '<td class="members">' + membersHtml + '</td>' +
         '<td>' + flagsHtml + '</td>' +
-        '<td><button class="close-btn" data-room="' + escapeHtml(room.room_id) + '">Close room</button></td>';
+        '<td><div class="row-actions">' +
+          '<button class="covert-btn" data-room="' + escapeHtml(room.room_id) + '">&#128065; Join covertly</button>' +
+          '<button class="close-btn" data-room="' + escapeHtml(room.room_id) + '">Close room</button>' +
+        '</div></td>';
       tbody.appendChild(tr);
     });
 
@@ -146,6 +195,49 @@
         loadRooms();
       });
     });
+    tbody.querySelectorAll('.covert-btn').forEach(el => {
+      el.addEventListener('click', () => {
+        window.open('/?covert_room=' + encodeURIComponent(el.dataset.room), '_blank');
+      });
+    });
+  }
+
+  async function loadUsers(){
+    const res = await api('/admin/api/users');
+    if (res.status !== 200) return;
+    const data = await res.json();
+    const users = data.users || [];
+    document.getElementById('stat-users').textContent = users.length;
+
+    const tbody = document.getElementById('users-tbody');
+    tbody.innerHTML = '';
+    document.getElementById('empty-users-state').style.display = users.length ? 'none' : 'block';
+
+    users.forEach(u => {
+      const tr = document.createElement('tr');
+      const created = u.created_ts ? new Date(u.created_ts * 1000).toLocaleDateString() : '-';
+      const avatarHtml = u.avatar_path
+        ? '<img class="avatar-thumb" src="' + escapeHtml(u.avatar_path) + '" alt="" />'
+        : '';
+      let badges = '';
+      if (u.is_admin) badges += '<span class="badge admin">ADMIN</span>';
+      if (!u.email_verified) badges += '<span class="badge unverified">UNVERIFIED</span>';
+      tr.innerHTML =
+        '<td>' + avatarHtml + escapeHtml(u.username) + ' ' + badges + '</td>' +
+        '<td>' + escapeHtml(u.email) + '</td>' +
+        '<td>' + escapeHtml(u.login_method) + '</td>' +
+        '<td>' + created + '</td>' +
+        '<td><button class="delete-user-btn" data-id="' + u.id + '" data-name="' + escapeHtml(u.username) + '"' + (u.is_admin ? ' disabled' : '') + '>Delete</button></td>';
+      tbody.appendChild(tr);
+    });
+
+    tbody.querySelectorAll('.delete-user-btn:not(:disabled)').forEach(el => {
+      el.addEventListener('click', async () => {
+        if (!confirm('Permanently delete the account "' + el.dataset.name + '"? This cannot be undone.')) return;
+        await api('/admin/api/users/' + el.dataset.id + '/delete', {method:'POST'});
+        loadUsers();
+      });
+    });
   }
 
   async function init(){
@@ -160,6 +252,7 @@
     document.getElementById('dashboard').style.display = 'block';
     document.getElementById('admin-email').textContent = me.email;
     loadRooms();
+    loadUsers();
     setInterval(loadRooms, 10000);
   }
   init();

