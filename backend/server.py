@@ -128,6 +128,18 @@ def _verify_password(password: str, stored: dict) -> bool:
     return hmac.compare_digest(candidate["hash"], stored["hash"])
 
 
+def get_client_ip(request) -> str:
+    """Railway (like most PaaS) sits behind a reverse proxy, so request.remote
+    is the proxy's own IP, not the real visitor's - which would make any
+    IP-keyed rate limiting effectively limit ALL users together instead of
+    each attacker individually. X-Forwarded-For's first entry is the original
+    client. Falls back to request.remote if the header is absent (e.g. local dev)."""
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.remote or "unknown"
+
+
 # failed_joins[(ip, room_id)] = list of failure timestamps within the last
 # FAILED_JOIN_WINDOW_S, used to throttle password brute-forcing of one specific
 # room without penalizing that IP for joining other, unrelated rooms.
@@ -143,6 +155,23 @@ def _too_many_failed_joins(key: tuple) -> bool:
 
 def _record_failed_join(key: tuple):
     failed_joins.setdefault(key, []).append(time.time())
+
+
+# Generic rate limiter shared by auth endpoints (login, register, resend-code,
+# avatar upload) - same sliding-window pattern as failed_joins above, just
+# parameterized so accounts.py can reuse it without duplicating the logic.
+_rate_limit_hits: dict[tuple, list[float]] = {}
+
+
+def rate_limited(key: tuple, max_hits: int, window_s: float) -> bool:
+    """Returns True (caller should reject the request) if `key` has already
+    hit `max_hits` within the last `window_s` seconds. Always records this
+    attempt regardless of outcome, so repeated hits keep extending the block."""
+    now = time.time()
+    hits = [t for t in _rate_limit_hits.get(key, []) if now - t < window_s]
+    hits.append(now)
+    _rate_limit_hits[key] = hits
+    return len(hits) > max_hits
 
 
 async def broadcast_to_room(room_id, msg: dict, exclude: int | None = None):
@@ -400,7 +429,7 @@ def _poll_payload(room_id: str) -> dict:
 async def websocket_handler(request):
     ws = web.WebSocketResponse(heartbeat=HEARTBEAT_INTERVAL, max_msg_size=WS_MAX_MSG_BYTES)
     await ws.prepare(request)
-    client_ip = request.remote or "unknown"
+    client_ip = get_client_ip(request)
 
     room_id = None
     member_id = None
@@ -869,13 +898,40 @@ async def admin_stats(request):
     })
 
 
+CSP_POLICY = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline' https://unpkg.com https://www.googletagmanager.com; "
+    "style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com; "
+    "font-src 'self' https://fonts.gstatic.com; "
+    "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://server.arcgisonline.com https://api.qrserver.com; "
+    "connect-src 'self' https://www.googletagmanager.com; "
+    "frame-src https://www.googletagmanager.com; "
+    "frame-ancestors 'none'; "
+    "object-src 'none'; "
+    "base-uri 'self'; "
+    "form-action 'self'"
+)
+# NOTE: script-src/style-src need 'unsafe-inline' because the app ships as a
+# static single-file HTML page (server.py serves it via FileResponse, not a
+# per-request template), so there's no natural place to mint a per-request
+# CSP nonce. This still meaningfully restricts which THIRD-PARTY origins can
+# load script/style/frame/connect from this page, and locks down framing,
+# plugins, and form submission targets - the main gap versus a nonce-based
+# policy is that it can't fully stop an attacker who already achieves inline
+# script injection. Switching to nonces would require moving off static
+# FileResponse to a per-request rendered template.
+
+
 @web.middleware
 async def security_headers_middleware(request, handler):
     response = await handler(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Permissions-Policy"] = "interest-cohort=()"
+    response.headers["Permissions-Policy"] = "interest-cohort=(), geolocation=(self), camera=(), microphone=(self)"
+    response.headers["Content-Security-Policy"] = CSP_POLICY
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["X-XSS-Protection"] = "0"
     return response
 
 

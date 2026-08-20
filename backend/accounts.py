@@ -39,6 +39,18 @@ VERIFICATION_MAX_ATTEMPTS = 6
 PBKDF2_ITERATIONS = 100_000
 MAX_AVATAR_BYTES = 900_000  # ~ generous cap for a compressed JPEG profile picture
 
+# Real image file signatures ("magic bytes") - checked against actual content,
+# never trusting the browser-supplied filename or content-type, both of which
+# an attacker can set to anything regardless of what bytes are actually inside.
+def _looks_like_real_image(data: bytes) -> bool:
+    if len(data) < 12:
+        return False
+    if data.startswith(b"\xff\xd8\xff") or data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return True
+    if data.startswith(b"RIFF") and data[8:12] == b"WEBP":
+        return True
+    return False
+
 DB_PATH: Path | None = None
 AVATAR_DIR: Path | None = None
 
@@ -379,7 +391,9 @@ def current_user(request):
     return get_user_from_session(_get_session_token(request))
 
 
-async def handle_register(request):
+async def handle_register(request, srv):
+    if srv.rate_limited(("register", srv.get_client_ip(request)), max_hits=5, window_s=3600):
+        return web.json_response({"error": "rate_limited"}, status=429)
     data = await request.json()
     email = str(data.get("email", "")).strip().lower()[:120]
     username = str(data.get("username", "")).strip()[:32]
@@ -394,12 +408,14 @@ async def handle_register(request):
     return web.json_response({"ok": True, "user_id": user_id, "email_sent": sent})
 
 
-async def handle_verify_email(request):
+async def handle_verify_email(request, srv):
     data = await request.json()
     user_id = data.get("user_id")
     code = str(data.get("code", ""))
     if not isinstance(user_id, int):
         return web.json_response({"error": "invalid_input"}, status=400)
+    if srv.rate_limited(("verify", srv.get_client_ip(request), user_id), max_hits=10, window_s=900):
+        return web.json_response({"error": "rate_limited"}, status=429)
     result = check_verification_code(user_id, code)
     if result != "ok":
         return web.json_response({"error": result}, status=400)
@@ -411,9 +427,11 @@ async def handle_verify_email(request):
     return resp
 
 
-async def handle_resend_code(request):
+async def handle_resend_code(request, srv):
     data = await request.json()
     user_id = data.get("user_id")
+    if srv.rate_limited(("resend", srv.get_client_ip(request)), max_hits=3, window_s=600):
+        return web.json_response({"error": "rate_limited"}, status=429)
     user = get_user_by_id(user_id) if isinstance(user_id, int) else None
     if not user:
         return web.json_response({"error": "not_found"}, status=404)
@@ -422,10 +440,12 @@ async def handle_resend_code(request):
     return web.json_response({"ok": True, "email_sent": sent})
 
 
-async def handle_login(request):
+async def handle_login(request, srv):
     data = await request.json()
     email = str(data.get("email", "")).strip().lower()
     password = str(data.get("password", ""))
+    if srv.rate_limited(("login", srv.get_client_ip(request), email), max_hits=8, window_s=600):
+        return web.json_response({"error": "rate_limited"}, status=429)
     user = get_user_by_email(email)
     if not user or not user["password_hash"]:
         return web.json_response({"error": "invalid_credentials"}, status=401)
@@ -486,10 +506,12 @@ async def handle_google_callback(request):
     return resp
 
 
-async def handle_avatar_upload(request):
+async def handle_avatar_upload(request, srv):
     user = current_user(request)
     if not user:
         return web.json_response({"error": "not_logged_in"}, status=401)
+    if srv.rate_limited(("avatar", user["id"]), max_hits=10, window_s=600):
+        return web.json_response({"error": "rate_limited"}, status=429)
     reader = await request.multipart()
     field = await reader.next()
     if field is None or field.name != "avatar":
@@ -497,6 +519,8 @@ async def handle_avatar_upload(request):
     image_bytes = await field.read(decode=True)
     if len(image_bytes) > MAX_AVATAR_BYTES:
         return web.json_response({"error": "too_large"}, status=413)
+    if not _looks_like_real_image(image_bytes):
+        return web.json_response({"error": "not_an_image"}, status=400)
     avatar_url = save_avatar(user["id"], image_bytes)
     update_avatar(user["id"], avatar_url)
     return web.json_response({"ok": True, "avatar": avatar_url})
@@ -514,10 +538,12 @@ async def handle_change_username(request):
     return web.json_response({"ok": True, "username": new_username})
 
 
-async def handle_change_password(request):
+async def handle_change_password(request, srv):
     user = current_user(request)
     if not user:
         return web.json_response({"error": "not_logged_in"}, status=401)
+    if srv.rate_limited(("change-pw", user["id"]), max_hits=8, window_s=600):
+        return web.json_response({"error": "rate_limited"}, status=429)
     data = await request.json()
     new_password = str(data.get("new_password", ""))
     if len(new_password) < 8:
@@ -534,10 +560,12 @@ async def handle_change_password(request):
     return web.json_response({"ok": True})
 
 
-async def handle_delete_account(request):
+async def handle_delete_account(request, srv):
     user = current_user(request)
     if not user:
         return web.json_response({"error": "not_logged_in"}, status=401)
+    if srv.rate_limited(("delete-acct", user["id"]), max_hits=8, window_s=600):
+        return web.json_response({"error": "rate_limited"}, status=429)
     data = await request.json()
     if user["password_hash"]:
         password = str(data.get("password", ""))
@@ -639,18 +667,18 @@ async def handle_admin_delete_user(request):
 
 
 def register_routes(app: web.Application, srv):
-    app.router.add_post("/auth/register", handle_register)
-    app.router.add_post("/auth/verify", handle_verify_email)
-    app.router.add_post("/auth/resend-code", handle_resend_code)
-    app.router.add_post("/auth/login", handle_login)
+    app.router.add_post("/auth/register", lambda r: handle_register(r, srv))
+    app.router.add_post("/auth/verify", lambda r: handle_verify_email(r, srv))
+    app.router.add_post("/auth/resend-code", lambda r: handle_resend_code(r, srv))
+    app.router.add_post("/auth/login", lambda r: handle_login(r, srv))
     app.router.add_post("/auth/logout", handle_logout)
     app.router.add_get("/auth/me", handle_me)
     app.router.add_get("/auth/google/login", handle_google_login)
     app.router.add_get("/auth/google/callback", handle_google_callback)
-    app.router.add_post("/auth/avatar", handle_avatar_upload)
+    app.router.add_post("/auth/avatar", lambda r: handle_avatar_upload(r, srv))
     app.router.add_post("/auth/change-username", handle_change_username)
-    app.router.add_post("/auth/change-password", handle_change_password)
-    app.router.add_post("/auth/delete-account", handle_delete_account)
+    app.router.add_post("/auth/change-password", lambda r: handle_change_password(r, srv))
+    app.router.add_post("/auth/delete-account", lambda r: handle_delete_account(r, srv))
     app.router.add_static("/avatars", AVATAR_DIR, show_index=False)
     app.router.add_get("/admin/api/rooms", lambda r: handle_admin_rooms(r, srv))
     app.router.add_post("/admin/api/rooms/{room_id}/close", lambda r: handle_admin_close_room(r, srv))
