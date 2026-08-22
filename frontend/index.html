@@ -537,10 +537,16 @@
     display:flex; align-items:center; gap:10px; margin:14px 0 4px; padding:10px 12px;
     background:var(--panel-2); border:1px solid var(--line); border-radius:6px;
   }
-  #account-avatar-preview{
-    width:32px; height:32px; border-radius:50%; object-fit:cover; border:1px solid var(--line);
-    background:var(--ink);
+  .avatar-preview-wrap{
+    position:relative; width:44px; height:44px; border-radius:50%; flex-shrink:0;
+    background:var(--panel-2); border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center; overflow:hidden;
   }
+  .avatar-preview-wrap-sm{ width:32px; height:32px; }
+  .avatar-preview-wrap img{ width:100%; height:100%; object-fit:cover; display:none; }
+  .avatar-preview-wrap img.has-src{ display:block; }
+  .avatar-preview-wrap svg{ color:var(--text-dim); }
+  .avatar-preview-wrap img.has-src ~ svg{ display:none; }
   #account-welcome-text{ flex:1; font-family:var(--mono); font-size:12px; color:var(--text); }
   #account-logout-btn{
     width:auto; margin:0; padding:6px 10px; font-size:11px; background:transparent;
@@ -574,9 +580,6 @@
     background:#fff; color:#1f1f1f; border:none; font-weight:600; font-size:13px; padding:12px;
   }
   #avatar-upload-row{ display:flex; align-items:center; gap:12px; margin-top:16px; }
-  #avatar-upload-preview{
-    width:44px; height:44px; border-radius:50%; object-fit:cover; border:1px solid var(--line); background:var(--panel-2);
-  }
   #avatar-upload-btn{ width:auto; margin:0; padding:8px 14px; font-size:12px; }
   #admin-link-row{ margin-top:12px; }
   #admin-link-btn{
@@ -696,7 +699,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <span id="t-color-label">Barva znacky</span>
       </div>
       <div id="account-status-bar" style="display:none;">
-        <img id="account-avatar-preview" alt="" />
+        <div class="avatar-preview-wrap avatar-preview-wrap-sm">
+          <img id="account-avatar-preview" alt="" />
+          <svg class="account-avatar-placeholder" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg>
+        </div>
         <span id="account-welcome-text"></span>
         <button type="button" id="account-logout-btn"></button>
       </div>
@@ -811,7 +817,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <input type="checkbox" id="feature-waypoints-toggle" checked />
     </div>
     <div id="avatar-upload-row" style="display:none;">
-      <img id="avatar-upload-preview" alt="" />
+      <div class="avatar-preview-wrap">
+        <img id="avatar-upload-preview" alt="" />
+        <svg id="avatar-upload-placeholder" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg>
+      </div>
       <button id="avatar-upload-btn" type="button"></button>
       <input type="file" id="avatar-upload-input" accept="image/*" style="display:none;" />
     </div>
@@ -1970,16 +1979,25 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   // ---------- Account system (login / register / verify / Google / avatar) ----------
   let pendingVerifyUserId = null;
 
+  function setAvatarPreview(imgEl, url){
+    if (url){
+      imgEl.src = url;
+      imgEl.classList.add('has-src');
+    } else {
+      imgEl.removeAttribute('src');
+      imgEl.classList.remove('has-src');
+    }
+  }
+
   function applyAccountUI(){
     if (currentAccount){
       accountStatusBar.style.display = 'flex';
       openAccountBtn.style.display = 'none';
       accountWelcomeText.textContent = t('welcomeBack', {name: currentAccount.username});
-      accountAvatarPreview.src = myAvatarUrl || '';
-      accountAvatarPreview.style.visibility = myAvatarUrl ? 'visible' : 'hidden';
+      setAvatarPreview(accountAvatarPreview, myAvatarUrl);
       if (!usernameInput.value.trim()) usernameInput.value = currentAccount.username;
       avatarUploadRow.style.display = 'flex';
-      avatarUploadPreview.src = myAvatarUrl || '';
+      setAvatarPreview(avatarUploadPreview, myAvatarUrl);
       adminLinkRow.style.display = currentAccount.is_admin ? 'block' : 'none';
       accountSettingsBlock.style.display = 'block';
       accountUsernameInput.value = currentAccount.username;
@@ -2222,9 +2240,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         if (r.ok){
           const data = await r.json();
           myAvatarUrl = data.avatar;
-          avatarUploadPreview.src = myAvatarUrl;
-          accountAvatarPreview.src = myAvatarUrl;
-          accountAvatarPreview.style.visibility = 'visible';
+          setAvatarPreview(avatarUploadPreview, myAvatarUrl);
+          setAvatarPreview(accountAvatarPreview, myAvatarUrl);
           if (ws && ws.readyState === WebSocket.OPEN){
             ws.send(JSON.stringify({type:'profile_update', avatar: myAvatarUrl}));
           }
@@ -3138,6 +3155,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:19});
     (satelliteOn ? satelliteLayer : streetLayer).addTo(map);
     mapStyleToggle.classList.toggle('active', satelliteOn);
+    // The map screen can still be mid fade-transition (or the browser may not
+    // have finished a layout pass) at the exact moment L.map() runs above, so
+    // Leaflet sometimes caches too-short a container height - leaving a black
+    // gap at the bottom where it thinks there's no map. Re-checking the real
+    // size shortly after (and on any later resize/rotation) fixes this
+    // reliably regardless of the exact timing that caused it.
+    requestAnimationFrame(() => map.invalidateSize());
+    setTimeout(() => map.invalidateSize(), SCREEN_TRANSITION_MS + 50);
+    window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
   }
 
   function toggleMapStyle(){

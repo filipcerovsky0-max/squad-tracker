@@ -446,7 +446,12 @@ async def websocket_handler(request):
             mtype = data.get("type")
 
             if mtype == "join":
-                candidate_room_id = str(data.get("room", "default"))[:MAX_ROOM_ID_LEN].strip()
+                # Case-insensitive room matching: mobile keyboards auto-capitalize
+                # the first letter, and people are inconsistent about caps in
+                # general, so "Trip2026" and "trip2026" must land in the same
+                # room rather than silently splitting a group into two rooms
+                # with zero error shown to either side.
+                candidate_room_id = str(data.get("room", "default"))[:MAX_ROOM_ID_LEN].strip().lower()
                 if not candidate_room_id:
                     candidate_room_id = "default"
                 candidate_username = str(data.get("username", "anon"))[:32].strip() or "anon"
