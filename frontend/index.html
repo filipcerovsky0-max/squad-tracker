@@ -409,6 +409,23 @@
   }
   #covert-banner.show{ display:block; }
 
+  #permission-banner{
+    position:absolute; top:52px; left:12px; right:12px; z-index:1060;
+    font-family:var(--mono); background:rgba(16,22,20,0.98); border:1px solid var(--danger);
+    border-radius:6px; padding:12px 14px; display:none;
+  }
+  #permission-banner.show{ display:block; }
+  #permission-banner-text{ margin:0 0 10px; font-size:12px; color:var(--text); line-height:1.5; }
+  #permission-banner-btns{ display:flex; gap:8px; justify-content:flex-end; }
+  #permission-retry-btn{
+    width:auto; margin:0; background:var(--signal); color:#0a0d0c; border:none; font-weight:700;
+    font-size:12px; padding:8px 16px;
+  }
+  #permission-dismiss-btn{
+    width:auto; margin:0; background:transparent; color:var(--text-dim); border:1px solid var(--line);
+    font-size:12px; padding:8px 12px;
+  }
+
   #vehicle-prompt{
     position:absolute; top:52px; left:50%; transform:translateX(-50%); z-index:1050;
     font-family:var(--mono); font-size:11px; color:var(--text); background:rgba(16,22,20,0.97);
@@ -733,6 +750,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div id="speaking-indicator"></div>
     <div id="gps-lost-banner"></div>
     <div id="covert-banner">OBSERVER MODE — invisible to this room</div>
+    <div id="permission-banner">
+      <p id="permission-banner-text"></p>
+      <div id="permission-banner-btns">
+        <button type="button" id="permission-retry-btn"></button>
+        <button type="button" id="permission-dismiss-btn">✕</button>
+      </div>
+    </div>
     <div id="vehicle-prompt">
       <span id="t-vehicle-prompt-text"></span>
       <div id="vehicle-prompt-btns">
@@ -1009,6 +1033,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       micUnavailable: 'Mikrofon není v tomto prohlížeči dostupný', micError: 'Mikrofon: {err}',
       geoUnavailable: 'Geolokace není v tomto prohlížeči dostupná', geoError: 'Poloha: {err}',
       lowGpsAccuracy: 'Nizka presnost GPS ({m} m) - stale te sdilime, ale tva pozice muze byt nepresna.',
+      geoPermissionDenied: 'Poloha je blokovana. Klepni na zamek/(i) vedle adresy stranky, povol Polohu a zkus to znovu.',
+      micPermissionDenied: 'Mikrofon je blokovany. Klepni na zamek/(i) vedle adresy stranky, povol Mikrofon a zkus to znovu.',
+      permissionRetryBtn: 'Zkusit znovu',
       proximity: '! {name} je {dist} m od tebe', speaking: '[AUDIO] {name} mluví',
       passwordLabel: 'Heslo (jen pro soukromou mistnost)', passwordPlaceholder: 'volitelne',
       consentLabel: 'Souhlasim se sdilenim polohy, chatu a hlasu s ostatnimi v teto mistnosti.',
@@ -1102,6 +1129,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       micUnavailable: 'Microphone is not available in this browser', micError: 'Microphone: {err}',
       geoUnavailable: 'Geolocation is not available in this browser', geoError: 'Location: {err}',
       lowGpsAccuracy: 'Low GPS accuracy ({m} m) - you\'re still being shared, but your position may be imprecise.',
+      geoPermissionDenied: 'Location is blocked. Tap the lock/(i) icon next to the address bar, allow Location, then try again.',
+      micPermissionDenied: 'Microphone is blocked. Tap the lock/(i) icon next to the address bar, allow Microphone, then try again.',
+      permissionRetryBtn: 'Try again',
       proximity: '! {name} is {dist} m from you', speaking: '[AUDIO] {name} is talking',
       passwordLabel: 'Password (for private rooms only)', passwordPlaceholder: 'optional',
       consentLabel: 'I agree to share my location, chat and voice with others in this room.',
@@ -1195,6 +1225,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       micUnavailable: 'Microphone indisponible dans ce navigateur', micError: 'Microphone : {err}',
       geoUnavailable: 'Geolocalisation indisponible dans ce navigateur', geoError: 'Position : {err}',
       lowGpsAccuracy: 'Faible precision GPS ({m} m) - tu es toujours partage, mais ta position peut etre imprecise.',
+      geoPermissionDenied: 'La localisation est bloquee. Appuie sur l\'icone cadenas/(i) pres de l\'adresse, autorise la localisation, puis reessaie.',
+      micPermissionDenied: 'Le microphone est bloque. Appuie sur l\'icone cadenas/(i) pres de l\'adresse, autorise le microphone, puis reessaie.',
+      permissionRetryBtn: 'Reessayer',
       proximity: '! {name} est a {dist} m de toi', speaking: '[AUDIO] {name} parle',
       passwordLabel: 'Mot de passe (salles privees uniquement)', passwordPlaceholder: 'optionnel',
       consentLabel: "J'accepte de partager ma position, mon chat et ma voix avec les autres dans cette salle.",
@@ -1288,6 +1321,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       micUnavailable: 'Microfono no disponible en este navegador', micError: 'Microfono: {err}',
       geoUnavailable: 'Geolocalizacion no disponible en este navegador', geoError: 'Ubicacion: {err}',
       lowGpsAccuracy: 'Baja precision GPS ({m} m) - sigues siendo compartido, pero tu posicion puede ser imprecisa.',
+      geoPermissionDenied: 'La ubicacion esta bloqueada. Toca el icono de candado/(i) junto a la direccion, permite la ubicacion e intenta de nuevo.',
+      micPermissionDenied: 'El microfono esta bloqueado. Toca el icono de candado/(i) junto a la direccion, permite el microfono e intenta de nuevo.',
+      permissionRetryBtn: 'Intentar de nuevo',
       proximity: '! {name} esta a {dist} m de ti', speaking: '[AUDIO] {name} esta hablando',
       passwordLabel: 'Contrasena (solo salas privadas)', passwordPlaceholder: 'opcional',
       consentLabel: 'Acepto compartir mi ubicacion, chat y voz con otros en esta sala.',
@@ -1381,6 +1417,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       micUnavailable: 'الميكروفون غير متاح في هذا المتصفح', micError: 'الميكروفون: {err}',
       geoUnavailable: 'تحديد الموقع غير متاح في هذا المتصفح', geoError: 'الموقع: {err}',
       lowGpsAccuracy: 'دقة GPS منخفضة ({m} م) - لا يزال يتم مشاركتك، لكن موقعك قد يكون غير دقيق.',
+      geoPermissionDenied: 'الموقع محظور. اضغط على أيقونة القفل/(i) بجانب شريط العنوان، اسمح بالموقع، ثم حاول مرة أخرى.',
+      micPermissionDenied: 'الميكروفون محظور. اضغط على أيقونة القفل/(i) بجانب شريط العنوان، اسمح بالميكروفون، ثم حاول مرة أخرى.',
+      permissionRetryBtn: 'حاول مرة أخرى',
       proximity: '! {name} على بعد {dist} م منك', speaking: '[صوت] {name} يتحدث',
       passwordLabel: 'كلمة المرور (للغرف الخاصة فقط)', passwordPlaceholder: 'اختياري',
       consentLabel: 'أوافق على مشاركة موقعي والمحادثة والصوت مع الآخرين في هذه الغرفة.',
@@ -1474,6 +1513,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       micUnavailable: 'इस ब्राउज़र में माइक्रोफ़ोन उपलब्ध नहीं है', micError: 'माइक्रोफ़ोन: {err}',
       geoUnavailable: 'इस ब्राउज़र में लोकेशन उपलब्ध नहीं है', geoError: 'लोकेशन: {err}',
       lowGpsAccuracy: 'कम GPS सटीकता ({m} मी) - आप अभी भी साझा किए जा रहे हैं, लेकिन आपकी स्थिति गलत हो सकती है।',
+      geoPermissionDenied: 'लोकेशन ब्लॉक है। एड्रेस बार के पास लॉक/(i) आइकन पर टैप करें, लोकेशन की अनुमति दें, फिर दोबारा कोशिश करें।',
+      micPermissionDenied: 'माइक्रोफ़ोन ब्लॉक है। एड्रेस बार के पास लॉक/(i) आइकन पर टैप करें, माइक्रोफ़ोन की अनुमति दें, फिर दोबारा कोशिश करें।',
+      permissionRetryBtn: 'दोबारा कोशिश करें',
       proximity: '! {name} आपसे {dist} मी दूर है', speaking: '[ऑडियो] {name} बोल रहा है',
       passwordLabel: 'पासवर्ड (केवल निजी रूम के लिए)', passwordPlaceholder: 'वैकल्पिक',
       consentLabel: 'मैं इस रूम में दूसरों के साथ अपनी लोकेशन, चैट और आवाज़ साझा करने के लिए सहमत हूं।',
@@ -1658,6 +1700,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     document.getElementById('cookie-reject-btn').textContent = t('cookieRejectBtn');
     document.getElementById('cookie-accept-btn').textContent = t('cookieAcceptBtn');
     document.getElementById('t-account-settings-title').textContent = t('accountSettingsTitle');
+    document.getElementById('permission-retry-btn').textContent = t('permissionRetryBtn');
     accountUsernameSaveBtn.textContent = t('accountUsernameSaveBtn');
     document.getElementById('t-account-current-password-label').textContent = t('accountCurrentPasswordLabel');
     document.getElementById('t-account-new-password-label').textContent = t('accountNewPasswordLabel');
@@ -1797,6 +1840,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   const chatImageBtn = document.getElementById('chat-image-btn');
   const mapStyleToggle = document.getElementById('map-style-toggle');
   const gpsLostBanner = document.getElementById('gps-lost-banner');
+  const permissionBanner = document.getElementById('permission-banner');
+  const permissionBannerText = document.getElementById('permission-banner-text');
+  const permissionRetryBtn = document.getElementById('permission-retry-btn');
+  const permissionDismissBtn = document.getElementById('permission-dismiss-btn');
   const compassPanel = document.getElementById('compass-panel');
   const compassClose = document.getElementById('compass-close');
   const compassTargetName = document.getElementById('compass-target-name');
@@ -2457,6 +2504,21 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     showToast._t = setTimeout(()=>alertToast.classList.remove('show'), 3200);
   }
 
+  // A blocked permission (location/microphone denied) breaks the app's core
+  // function until the person fixes it themselves in browser settings - a
+  // toast that vanishes in 3 seconds isn't nearly persistent or clear enough
+  // for that. This banner stays up, explains exactly what's wrong, and offers
+  // a "Try again" button (re-request the permission) plus a way to dismiss it.
+  function showPermissionBanner(text, onRetry){
+    permissionBannerText.textContent = text;
+    permissionBanner.classList.add('show');
+    permissionRetryBtn.onclick = () => {
+      permissionBanner.classList.remove('show');
+      if (onRetry) onRetry();
+    };
+  }
+  permissionDismissBtn.addEventListener('click', () => permissionBanner.classList.remove('show'));
+
   // Haptic feedback - short, distinct buzzes for a couple of key moments.
   // Silently does nothing on devices/browsers without vibration support (e.g. iOS Safari, desktop).
   function haptic(pattern){
@@ -2885,7 +2947,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       pttBtn.classList.add('recording');
     } catch (err){
       releaseStream();
-      showToast(t('micError', {err: err.message}));
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError'){
+        showPermissionBanner(t('micPermissionDenied'), () => startRecording());
+      } else {
+        showToast(t('micError', {err: err.message}));
+      }
     }
   }
 
@@ -3140,7 +3206,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           ws.send(JSON.stringify(payload));
         }
       },
-      (err) => { showToast(t('geoError', {err: err.message})); checkOwnSignalLoss(); },
+      (err) => {
+        checkOwnSignalLoss();
+        if (err.code === 1){
+          // PERMISSION_DENIED - nothing works until the person re-enables
+          // it themselves, so this needs to stay visible and actionable.
+          showPermissionBanner(t('geoPermissionDenied'), () => { watchId = null; startGeolocation(); });
+        } else {
+          showToast(t('geoError', {err: err.message}));
+        }
+      },
       { enableHighAccuracy:true, maximumAge:1000, timeout:15000 }
     );
   }
