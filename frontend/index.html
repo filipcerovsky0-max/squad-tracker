@@ -1016,10 +1016,29 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
     })(window,document,'script','dataLayer','GTM-TZH7MWPB');
   }
+
+  // Same reasoning as GTM above: GA4's gtag.js must not load before consent
+  // either, since it sets its own analytics cookies. This mirrors Google's
+  // standard gtag snippet exactly, just deferred behind the accept button
+  // instead of running unconditionally in <head>.
+  function loadGA4(){
+    if (window._ga4Loaded) return;
+    window._ga4Loaded = true;
+    const s = document.createElement('script');
+    s.async = true;
+    s.src = 'https://www.googletagmanager.com/gtag/js?id=G-L4DN3GL2XY';
+    document.head.appendChild(s);
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = window.gtag || function(){ window.dataLayer.push(arguments); };
+    window.gtag('js', new Date());
+    window.gtag('config', 'G-L4DN3GL2XY');
+  }
+
   const COOKIE_CONSENT_KEY = 'sq_cookie_consent';
   const cookieConsentState = localStorage.getItem(COOKIE_CONSENT_KEY);
   if (cookieConsentState === 'accepted'){
     loadGTM();
+    loadGA4();
   }
 
   const I18N = {
@@ -1943,6 +1962,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     localStorage.setItem(COOKIE_CONSENT_KEY, 'accepted');
     cookieBanner.classList.remove('show');
     loadGTM();
+    loadGA4();
   });
   cookieRejectBtn.addEventListener('click', () => {
     localStorage.setItem(COOKIE_CONSENT_KEY, 'rejected');
