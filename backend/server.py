@@ -908,7 +908,7 @@ CSP_POLICY = (
     "script-src 'self' 'unsafe-inline' https://unpkg.com https://www.googletagmanager.com; "
     "style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com; "
     "font-src 'self' https://fonts.gstatic.com; "
-    "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://server.arcgisonline.com https://api.qrserver.com; "
+    "img-src 'self' data: blob: https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org https://server.arcgisonline.com https://api.qrserver.com; "
     "connect-src 'self' https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com; "
     "frame-src https://www.googletagmanager.com; "
     "frame-ancestors 'none'; "

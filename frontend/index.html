@@ -1,15 +1,6 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head>
-  <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-L4DN3GL2XY"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-L4DN3GL2XY');
-</script>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>Squad Tracker - Real-time GPS sledovani skupiny</title>
@@ -3255,7 +3246,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
   function initMap(){
     map = L.map('map', {zoomControl:false, attributionControl:false}).setView([49.47,17.11], 13);
-    streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19});
+    // Raw tile.openstreetmap.org is meant for light personal/testing use and
+    // increasingly rate-limits or outright blocks apps with real traffic
+    // (403/429 responses) - CARTO's free tile service is explicitly built
+    // for production apps, and its dark basemap also matches this app's
+    // tactical aesthetic better than plain OSM ever did.
+    streetLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {maxZoom:20, subdomains:'abcd'});
     satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:19});
     (satelliteOn ? satelliteLayer : streetLayer).addTo(map);
     mapStyleToggle.classList.toggle('active', satelliteOn);
